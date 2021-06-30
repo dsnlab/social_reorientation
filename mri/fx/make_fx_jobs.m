@@ -1,0 +1,394 @@
+%-----------------------------------------------------------------------
+% Job saved on 09-Apr-2015 17:22:00 by cfg_util (rev $Rev: 6134 $)
+% spm SPM - SPM12 (6225)
+% cfg_basicio BasicIO - Unknown
+%-----------------------------------------------------------------------
+
+order1_subs={'s003' 's004' 's009' 's010' 's025' 's026' 's028' 's034' 's041' 's042' 's044' 's054' 's060' 's061' 's070' 's072' 's079' 's086' 's089' 's092'};
+order2_subs={'s001' 's008' 's014' 's020' 's023' 's024' 's027' 's032' 's036' 's038' 's040' 's046' 's057' 's063' 's065' 's071' 's075' 's077' 's084' 's094'};
+order3_subs={'s002' 's006' 's015' 's017' 's018' 's019' 's029' 's031' 's037' 's039' 's047' 's049' 's055' 's056' 's058' 's064' 's073' 's078' 's080' 's085' 's090' 's096'};
+order4_subs={'s005' 's007' 's011' 's016' 's022' 's030' 's033' 's035' 's045' 's051' 's059' 's062' 's067' 's068' 's074' 's081' 's082' 's093' 's095'};
+
+%% Loop through order 1 subjects
+for i = 1:length(order1_subs)
+	for tCount = 1:3
+		
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.dir = {['/projects/dsnlab/shared/SFIC_Self3/subjects/',char((order1_subs(i))),'/t',(num2str(tCount)),'/ppc']};
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.filter = '^s6wob_t';
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.rec = 'FPList';
+    matlabbatch{2}.spm.stats.fmri_spec.dir = {['/projects/dsnlab/shared/SFIC_Self3/subjects/',char((order1_subs(i))),'/t',(num2str(tCount)),'/fx/fx_residuals']};
+    matlabbatch{2}.spm.stats.fmri_spec.timing.units = 'secs';
+    matlabbatch{2}.spm.stats.fmri_spec.timing.RT = 3;
+    matlabbatch{2}.spm.stats.fmri_spec.timing.fmri_t = 16;
+    matlabbatch{2}.spm.stats.fmri_spec.timing.fmri_t0 = 8;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.scans(1) = cfg_dep('File Selector (Batch Mode): Selected Files (^s6wob_t)', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','files'));
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).name = 'SelfAcad';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).onset = 18;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).name = 'SelfSoc';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).onset = 210;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).name = 'OtherAcad';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).onset = 114;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).name = 'OtherSoc';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).onset = 306;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.multi = {''};
+    matlabbatch{2}.spm.stats.fmri_spec.sess.regress = struct('name', {}, 'val', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.multi_reg = {['/projects/dsnlab/shared/SFIC_Self3/notes/motion/rp_auto_txt/rp_',char((order1_subs(i))),'_t',(num2str(tCount)),'.txt']};
+    matlabbatch{2}.spm.stats.fmri_spec.sess.hpf = Inf;
+    matlabbatch{2}.spm.stats.fmri_spec.fact = struct('name', {}, 'levels', {});
+    matlabbatch{2}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
+    matlabbatch{2}.spm.stats.fmri_spec.volt = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.global = 'Scaling';
+    matlabbatch{2}.spm.stats.fmri_spec.mthresh = -Inf;
+    matlabbatch{2}.spm.stats.fmri_spec.mask = {'/projects/dsnlab/shared/SFIC_Self3/masks/groupAverage_opt.nii,1'};
+    matlabbatch{2}.spm.stats.fmri_spec.cvi = 'none';
+    matlabbatch{3}.spm.stats.fmri_est.spmmat(1) = cfg_dep('fMRI model specification: SPM.mat File', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+    matlabbatch{3}.spm.stats.fmri_est.write_residuals = 1;
+    matlabbatch{3}.spm.stats.fmri_est.method.Classical = 1;
+    matlabbatch{4}.spm.stats.con.spmmat(1) = cfg_dep('Model estimation: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.name = 'SelfAcad > Rest';
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.weights = [1 0 0 0];
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.name = 'SelfSoc > Rest';
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.weights = [0 1 0 0];
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.name = 'OtherAcad > Rest';
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.weights = [0 0 1 0];
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.name = 'OtherSoc > Rest';
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.weights = [0 0 0 1];
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.name = 'Self > Other';
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.weights = [0.5 0.5 -0.5 -0.5];
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.name = 'Soc > Acad';
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.weights = [-0.5 0.5 -0.5 0.5];
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.name = 'Self (Soc > Acad) > Other (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.weights = [-0.5 0.5 0.5 -0.5];
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.name = 'Self (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.weights = [-0.5 0.5 0 0];
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.name = 'Other (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.weights = [0 0 -0.5 0.5];
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.name = 'SelfSoc > OtherSoc';
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.weights = [0 1 0 -1];
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.name = 'SelfAcad > OtherAcad';
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.weights = [1 0 -1 0];
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.name = 'All > Rest';
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.weights = [1 1 1 1];
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.delete = 0;
+
+		saveJob = ['~/Documents/code/dsnlab/SFIC_scripts/spm/fx/fx_jobs/',char((order1_subs(i))),'_t',(num2str(tCount)),'_fx_job.mat']; %Path to where the file output should go
+		save(saveJob,'matlabbatch');
+		clear matlabbatch;
+	end
+end
+
+%% Loop through order 2 subjects
+for i = 1:length(order2_subs)
+	for tCount = 1:3
+		
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.dir = {['/projects/dsnlab/shared/SFIC_Self3/subjects/',char((order2_subs(i))),'/t',(num2str(tCount)),'/ppc']};
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.filter = '^s6wob_t';
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.rec = 'FPList';
+    matlabbatch{2}.spm.stats.fmri_spec.dir = {['/projects/dsnlab/shared/SFIC_Self3/subjects/',char((order2_subs(i))),'/t',(num2str(tCount)),'/fx/fx_residuals']};
+    matlabbatch{2}.spm.stats.fmri_spec.timing.units = 'secs';
+    matlabbatch{2}.spm.stats.fmri_spec.timing.RT = 3;
+    matlabbatch{2}.spm.stats.fmri_spec.timing.fmri_t = 16;
+    matlabbatch{2}.spm.stats.fmri_spec.timing.fmri_t0 = 8;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.scans(1) = cfg_dep('File Selector (Batch Mode): Selected Files (^s6wob_t)', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','files'));
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).name = 'SelfAcad';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).onset = 210;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).name = 'SelfSoc';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).onset = 18;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).name = 'OtherAcad';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).onset = 306;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).name = 'OtherSoc';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).onset = 114;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.multi = {''};
+    matlabbatch{2}.spm.stats.fmri_spec.sess.regress = struct('name', {}, 'val', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.multi_reg = {['/projects/dsnlab/shared/SFIC_Self3/notes/motion/rp_auto_txt/rp_',char((order2_subs(i))),'_t',(num2str(tCount)),'.txt']};
+    matlabbatch{2}.spm.stats.fmri_spec.sess.hpf = Inf;
+    matlabbatch{2}.spm.stats.fmri_spec.fact = struct('name', {}, 'levels', {});
+    matlabbatch{2}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
+    matlabbatch{2}.spm.stats.fmri_spec.volt = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.global = 'Scaling';
+    matlabbatch{2}.spm.stats.fmri_spec.mthresh = -Inf;
+    matlabbatch{2}.spm.stats.fmri_spec.mask = {'/projects/dsnlab/shared/SFIC_Self3/masks/groupAverage_opt.nii,1'};
+    matlabbatch{2}.spm.stats.fmri_spec.cvi = 'none';
+    matlabbatch{3}.spm.stats.fmri_est.spmmat(1) = cfg_dep('fMRI model specification: SPM.mat File', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+    matlabbatch{3}.spm.stats.fmri_est.write_residuals = 1;
+    matlabbatch{3}.spm.stats.fmri_est.method.Classical = 1;
+    matlabbatch{4}.spm.stats.con.spmmat(1) = cfg_dep('Model estimation: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.name = 'SelfAcad > Rest';
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.weights = [1 0 0 0];
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.name = 'SelfSoc > Rest';
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.weights = [0 1 0 0];
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.name = 'OtherAcad > Rest';
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.weights = [0 0 1 0];
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.name = 'OtherSoc > Rest';
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.weights = [0 0 0 1];
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.name = 'Self > Other';
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.weights = [0.5 0.5 -0.5 -0.5];
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.name = 'Soc > Acad';
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.weights = [-0.5 0.5 -0.5 0.5];
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.name = 'Self (Soc > Acad) > Other (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.weights = [-0.5 0.5 0.5 -0.5];
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.name = 'Self (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.weights = [-0.5 0.5 0 0];
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.name = 'Other (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.weights = [0 0 -0.5 0.5];
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.name = 'SelfSoc > OtherSoc';
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.weights = [0 1 0 -1];
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.name = 'SelfAcad > OtherAcad';
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.weights = [1 0 -1 0];
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.name = 'All > Rest';
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.weights = [1 1 1 1];
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.delete = 0;
+
+		saveJob = ['~/Documents/code/dsnlab/SFIC_scripts/spm/fx/fx_jobs/',char((order2_subs(i))),'_t',(num2str(tCount)),'_fx_job.mat']; %Path to where the file output should go
+		save(saveJob,'matlabbatch');
+		clear matlabbatch;
+	end
+end
+
+%% Loop through order 3 subjects
+for i = 1:length(order3_subs)
+	for tCount = 1:3
+		
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.dir = {['/projects/dsnlab/shared/SFIC_Self3/subjects/',char((order3_subs(i))),'/t',(num2str(tCount)),'/ppc']};
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.filter = '^s6wob_t';
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.rec = 'FPList';
+    matlabbatch{2}.spm.stats.fmri_spec.dir = {['/projects/dsnlab/shared/SFIC_Self3/subjects/',char((order3_subs(i))),'/t',(num2str(tCount)),'/fx/fx_residuals']};
+    matlabbatch{2}.spm.stats.fmri_spec.timing.units = 'secs';
+    matlabbatch{2}.spm.stats.fmri_spec.timing.RT = 3;
+    matlabbatch{2}.spm.stats.fmri_spec.timing.fmri_t = 16;
+    matlabbatch{2}.spm.stats.fmri_spec.timing.fmri_t0 = 8;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.scans(1) = cfg_dep('File Selector (Batch Mode): Selected Files (^s6wob_t)', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','files'));
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).name = 'SelfAcad';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).onset = 114;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).name = 'SelfSoc';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).onset = 306;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).name = 'OtherAcad';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).onset = 18;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).name = 'OtherSoc';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).onset = 210;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.multi = {''};
+    matlabbatch{2}.spm.stats.fmri_spec.sess.regress = struct('name', {}, 'val', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.multi_reg = {['/projects/dsnlab/shared/SFIC_Self3/notes/motion/rp_auto_txt/rp_',char((order3_subs(i))),'_t',(num2str(tCount)),'.txt']};
+    matlabbatch{2}.spm.stats.fmri_spec.sess.hpf = Inf;
+    matlabbatch{2}.spm.stats.fmri_spec.fact = struct('name', {}, 'levels', {});
+    matlabbatch{2}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
+    matlabbatch{2}.spm.stats.fmri_spec.volt = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.global = 'Scaling';
+    matlabbatch{2}.spm.stats.fmri_spec.mthresh = -Inf;
+    matlabbatch{2}.spm.stats.fmri_spec.mask = {'/projects/dsnlab/shared/SFIC_Self3/masks/groupAverage_opt.nii,1'};
+    matlabbatch{2}.spm.stats.fmri_spec.cvi = 'none';
+    matlabbatch{3}.spm.stats.fmri_est.spmmat(1) = cfg_dep('fMRI model specification: SPM.mat File', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+    matlabbatch{3}.spm.stats.fmri_est.write_residuals = 1;
+    matlabbatch{3}.spm.stats.fmri_est.method.Classical = 1;
+    matlabbatch{4}.spm.stats.con.spmmat(1) = cfg_dep('Model estimation: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.name = 'SelfAcad > Rest';
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.weights = [1 0 0 0];
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.name = 'SelfSoc > Rest';
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.weights = [0 1 0 0];
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.name = 'OtherAcad > Rest';
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.weights = [0 0 1 0];
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.name = 'OtherSoc > Rest';
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.weights = [0 0 0 1];
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.name = 'Self > Other';
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.weights = [0.5 0.5 -0.5 -0.5];
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.name = 'Soc > Acad';
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.weights = [-0.5 0.5 -0.5 0.5];
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.name = 'Self (Soc > Acad) > Other (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.weights = [-0.5 0.5 0.5 -0.5];
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.name = 'Self (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.weights = [-0.5 0.5 0 0];
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.name = 'Other (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.weights = [0 0 -0.5 0.5];
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.name = 'SelfSoc > OtherSoc';
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.weights = [0 1 0 -1];
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.name = 'SelfAcad > OtherAcad';
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.weights = [1 0 -1 0];
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.name = 'All > Rest';
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.weights = [1 1 1 1];
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.delete = 0;
+
+		saveJob = ['~/Documents/code/dsnlab/SFIC_scripts/spm/fx/fx_jobs/',char((order3_subs(i))),'_t',(num2str(tCount)),'_fx_job.mat']; %Path to where the file output should go
+		save(saveJob,'matlabbatch');
+		clear matlabbatch;
+	end
+end
+
+%% Loop through order 4 subjects
+for i = 1:length(order4_subs)
+	for tCount = 1:3
+		
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.dir = {['/projects/dsnlab/shared/SFIC_Self3/subjects/',char((order4_subs(i))),'/t',(num2str(tCount)),'/ppc']};
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.filter = '^s6wob_t';
+    matlabbatch{1}.cfg_basicio.file_dir.file_ops.file_fplist.rec = 'FPList';
+    matlabbatch{2}.spm.stats.fmri_spec.dir = {['/projects/dsnlab/shared/SFIC_Self3/subjects/',char((order4_subs(i))),'/t',(num2str(tCount)),'/fx/fx_residuals']};
+    matlabbatch{2}.spm.stats.fmri_spec.timing.units = 'secs';
+    matlabbatch{2}.spm.stats.fmri_spec.timing.RT = 3;
+    matlabbatch{2}.spm.stats.fmri_spec.timing.fmri_t = 16;
+    matlabbatch{2}.spm.stats.fmri_spec.timing.fmri_t0 = 8;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.scans(1) = cfg_dep('File Selector (Batch Mode): Selected Files (^s6wob_t)', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','files'));
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).name = 'SelfAcad';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).onset = 306;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(1).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).name = 'SelfSoc';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).onset = 114;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(2).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).name = 'OtherAcad';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).onset = 210;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(3).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).name = 'OtherSoc';
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).onset = 18;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).duration = 78;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).tmod = 0;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).pmod = struct('name', {}, 'param', {}, 'poly', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.cond(4).orth = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.sess.multi = {''};
+    matlabbatch{2}.spm.stats.fmri_spec.sess.regress = struct('name', {}, 'val', {});
+    matlabbatch{2}.spm.stats.fmri_spec.sess.multi_reg = {['/projects/dsnlab/shared/SFIC_Self3/notes/motion/rp_auto_txt/rp_',char((order4_subs(i))),'_t',(num2str(tCount)),'.txt']};
+    matlabbatch{2}.spm.stats.fmri_spec.sess.hpf = Inf;
+    matlabbatch{2}.spm.stats.fmri_spec.fact = struct('name', {}, 'levels', {});
+    matlabbatch{2}.spm.stats.fmri_spec.bases.hrf.derivs = [0 0];
+    matlabbatch{2}.spm.stats.fmri_spec.volt = 1;
+    matlabbatch{2}.spm.stats.fmri_spec.global = 'Scaling';
+    matlabbatch{2}.spm.stats.fmri_spec.mthresh = -Inf;
+    matlabbatch{2}.spm.stats.fmri_spec.mask = {'/projects/dsnlab/shared/SFIC_Self3/masks/groupAverage_opt.nii,1'};
+    matlabbatch{2}.spm.stats.fmri_spec.cvi = 'none';
+    matlabbatch{3}.spm.stats.fmri_est.spmmat(1) = cfg_dep('fMRI model specification: SPM.mat File', substruct('.','val', '{}',{2}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+    matlabbatch{3}.spm.stats.fmri_est.write_residuals = 1;
+    matlabbatch{3}.spm.stats.fmri_est.method.Classical = 1;
+    matlabbatch{4}.spm.stats.con.spmmat(1) = cfg_dep('Model estimation: SPM.mat File', substruct('.','val', '{}',{3}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('.','spmmat'));
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.name = 'SelfAcad > Rest';
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.weights = [1 0 0 0];
+    matlabbatch{4}.spm.stats.con.consess{1}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.name = 'SelfSoc > Rest';
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.weights = [0 1 0 0];
+    matlabbatch{4}.spm.stats.con.consess{2}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.name = 'OtherAcad > Rest';
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.weights = [0 0 1 0];
+    matlabbatch{4}.spm.stats.con.consess{3}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.name = 'OtherSoc > Rest';
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.weights = [0 0 0 1];
+    matlabbatch{4}.spm.stats.con.consess{4}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.name = 'Self > Other';
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.weights = [0.5 0.5 -0.5 -0.5];
+    matlabbatch{4}.spm.stats.con.consess{5}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.name = 'Soc > Acad';
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.weights = [-0.5 0.5 -0.5 0.5];
+    matlabbatch{4}.spm.stats.con.consess{6}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.name = 'Self (Soc > Acad) > Other (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.weights = [-0.5 0.5 0.5 -0.5];
+    matlabbatch{4}.spm.stats.con.consess{7}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.name = 'Self (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.weights = [-0.5 0.5 0 0];
+    matlabbatch{4}.spm.stats.con.consess{8}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.name = 'Other (Soc > Acad)';
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.weights = [0 0 -0.5 0.5];
+    matlabbatch{4}.spm.stats.con.consess{9}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.name = 'SelfSoc > OtherSoc';
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.weights = [0 1 0 -1];
+    matlabbatch{4}.spm.stats.con.consess{10}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.name = 'SelfAcad > OtherAcad';
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.weights = [1 0 -1 0];
+    matlabbatch{4}.spm.stats.con.consess{11}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.name = 'All > Rest';
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.weights = [1 1 1 1];
+    matlabbatch{4}.spm.stats.con.consess{12}.tcon.sessrep = 'none';
+    matlabbatch{4}.spm.stats.con.delete = 0;
+
+		saveJob = ['~/Documents/code/dsnlab/SFIC_scripts/spm/fx/fx_jobs/',char((order4_subs(i))),'_t',(num2str(tCount)),'_fx_job.mat']; %Path to where the file output should go
+		save(saveJob,'matlabbatch');
+		clear matlabbatch;
+	end
+end

@@ -1,0 +1,221 @@
+---
+title: "Clean self-report data"
+author: "Dani Cosme"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    highlight: tango
+    theme: united
+    toc: true
+    toc_float: 
+      collapsed: TRUE
+      smooth_scroll: TRUE
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, error = FALSE, warning = FALSE)
+```
+
+This document provides the code for the analyses reported in:
+
+[Cosme et al. (Preprint) Testing the adolescent social reorientation model using hierarchical growth curve modeling with parcellated fMRI data](https://psyarxiv.com/8eyf5/)
+
+This script cleans the self-report data for the analyses reported in supplementary material.
+
+# load packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(psych)
+```
+
+# load SPPC data
+* Recode 9999 and multiple responses as NA
+```{r}
+t1_sppc = readxl::read_excel("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/lerner/T1Lerner_Enter-Check_AT.xls", sheet = "What I am like") %>%
+  extract(SID, "subjectID", "L[0-3]{1}([0-9]{2})") %>%
+  mutate(subjectID = paste0("s0", subjectID),
+         wave = "t1") %>%
+  gather(question, value, starts_with("Q")) %>%
+  mutate(value = ifelse(value %in% c("9999", "1,3", "2,3", "2,4"), NA, value)) %>%
+  spread(question, value)
+
+t2_sppc = readxl::read_excel("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/lerner/T2Lerner_Enter-Check_AT.xls", sheet = "What I Am Like") %>%
+  filter(!is.na(SID)) %>%
+  extract(SID, "subjectID", "L[0-3]{1}([0-9]{2})") %>%
+  mutate(subjectID = paste0("s0", subjectID),
+         wave = "t2") %>%
+  gather(question, value, starts_with("Q")) %>%
+  mutate(value = ifelse(value %in% c("9999", "2,4"), NA, value)) %>%
+  spread(question, value)
+
+t3_sppc = readxl::read_excel("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/lerner/T3Lerner_Enter-Check_AT.xls", sheet = "What I am like") %>%
+  filter(!is.na(SID)) %>%
+  extract(SID, "subjectID", "L[0-3]{1}([0-9]{2})") %>%
+  mutate(subjectID = paste0("s0", subjectID),
+         wave = "t3") %>%
+  gather(question, value, starts_with("Q")) %>%
+  mutate(value = ifelse(value %in% c("9999", "2,4"), NA, value)) %>%
+  spread(question, value)
+
+t2_id = readxl::read_excel("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/lerner/T2Lerner_with_SPPC_ID.xls", sheet = "SPPC ID") %>%
+  filter(grepl("^L", SID)) %>%
+  extract(SID, "subjectID", "L[0-3]{1}([0-9]{2})") %>%
+  mutate(subjectID = paste0("s0", subjectID),
+         wave = "t2") %>%
+  mutate_at(vars(starts_with("Q")), as.numeric) %>%
+  select(subjectID, wave, starts_with("Q"))
+
+t3_id = readxl::read_excel("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/lerner/T3SPPC_ID.xls") %>%
+  filter(grepl("^L", SID)) %>%
+  extract(SID, "subjectID", "L[0-3]{1}([0-9]{2})") %>%
+  mutate(subjectID = paste0("s0", subjectID),
+         wave = "t3") %>%
+  mutate_at(vars(starts_with("Q")), as.numeric) %>%
+  select(subjectID, wave, starts_with("Q")) 
+```
+
+# bind and score SPPC
+* The note on the excels spreadsheets says "1 = first bubble, 2 = second bubble, 3 = third bubble, 4 = fourth bubble"
+* Therefore academic items: Q13, Q19, Q31 and social items: Q2, Q14, Q26 are correctly scored (left to right = 1-4)
+* The other items academic items: Q1, Q7, Q25 and social items: Q8, Q20, Q32 are incorrectly scored (left to right = 4-1) --> swap these ratings
+
+```{r}
+sppc = bind_rows(t1_sppc, t2_sppc, t3_sppc) %>%
+  mutate_at(vars(starts_with("Q")), as.numeric)
+```
+
+## check distribution
+```{r}
+sppc %>% 
+  select(subjectID, wave, "Q1", "Q7", "Q13", "Q19", "Q25", "Q31", "Q2", "Q8", "Q14", "Q20", "Q26", "Q32") %>%
+  gather(item, value, starts_with("Q")) %>%
+  mutate(domain = ifelse(item %in% c("Q1", "Q7", "Q13", "Q19", "Q25", "Q31"), "academic", "social")) %>%
+  ggplot(aes(value, fill = domain)) +
+    geom_density(alpha = .5, color = NA) +
+    scale_x_continuous(limits = c(1,4), breaks = c(1:4)) +
+    facet_grid(wave~domain + item) +
+    theme_minimal()
+```
+
+## check reverse scored distribution
+```{r}
+sppc %>% 
+  select(subjectID, wave, "Q1", "Q7", "Q13", "Q19", "Q25", "Q31", "Q2", "Q8", "Q14", "Q20", "Q26", "Q32") %>%
+  gather(item, value, starts_with("Q")) %>%
+  mutate(domain = ifelse(item %in% c("Q1", "Q7", "Q13", "Q19", "Q25", "Q31"), "academic", "social"),
+         value = ifelse(!item %in% c("Q13", "Q19", "Q31", "Q2", "Q14", "Q26") & value == 4, 1,
+                 ifelse(!item %in% c("Q13", "Q19", "Q31", "Q2", "Q14", "Q26") & value == 3, 2,
+                 ifelse(!item %in% c("Q13", "Q19", "Q31", "Q2", "Q14", "Q26") & value == 2, 3,
+                 ifelse(!item %in% c("Q13", "Q19", "Q31", "Q2", "Q14", "Q26") & value == 1, 4, value))))) %>%
+  ggplot(aes(value, fill = domain)) +
+    geom_density(alpha = .5, color = NA) +
+    scale_x_continuous(limits = c(1,4), breaks = c(1:4)) +
+    facet_grid(wave~domain + item) +
+    theme_minimal()
+```
+
+```{r}
+key_list = list(academic = c("-Q1", "-Q7", "Q13", "Q19", "-Q25", "Q31"),
+                social = c("Q2", "-Q8", "Q14", "-Q20", "Q26", "Q32"))
+
+sppc[40:41] = psych::scoreItems(key_list, sppc[,-c(1:3)], min = 1, max = 4)$scores
+
+sppc = sppc %>%
+  rename("academic" = V1,
+         "social" = V2) %>%
+  select(-starts_with("Q")) %>%
+  gather(domain, competence, academic, social)
+```
+
+## check scored distribution
+```{r}
+sppc %>%
+  ggplot(aes(competence, fill = domain)) +
+    geom_density(alpha = .5, color = NA) +
+    scale_x_continuous(limits = c(1,4), breaks = c(1:4)) +
+    facet_grid(~wave) +
+    theme_minimal()
+```
+
+# bind and score SPPC ID
+* Data appear to be reverse-scored (academic items = Q1, social items = Q7)
+* The notes give column values (e.g., left column = 4, 3, right column = 1, 2) and is swapped for reverse scored items (e.g., left column = 1, 2, right column = 4, 3)
+* Note the scale for the survey administered in this sample, was swapped for th right column ("really true", "sort of true" instead of "sort of true", "really true")
+```{r}
+id = bind_rows(t2_id, t3_id)
+```
+
+## check distribution
+```{r}
+id %>% 
+  select(subjectID, wave, Q1, Q6, Q2, Q7) %>%
+  gather(item, value, starts_with("Q")) %>%
+  mutate(domain = ifelse(item %in% c("Q1", "Q6"), "academic", "social")) %>%
+  ggplot(aes(value, fill = domain)) +
+    geom_density(alpha = .5, color = NA) +
+    scale_x_continuous(limits = c(1,4), breaks = c(1:4)) +
+    facet_grid(wave~domain + item) +
+    theme_minimal()
+```
+
+## check reverse scored distribution
+```{r}
+id %>% 
+  select(subjectID, wave, Q1, Q6, Q2, Q7) %>%
+  gather(item, value, starts_with("Q")) %>%
+  mutate(domain = ifelse(item %in% c("Q1", "Q6"), "academic", "social"),
+         value = ifelse(item %in% c("Q1", "Q7") & value == 4, 1,
+                 ifelse(item %in% c("Q1", "Q7") & value == 3, 2,
+                 ifelse(item %in% c("Q1", "Q7") & value == 2, 3,
+                 ifelse(item %in% c("Q1", "Q7") & value == 1, 4, value))))) %>%
+  ggplot(aes(value, fill = domain)) +
+    geom_density(alpha = .5, color = NA) +
+    scale_x_continuous(limits = c(1,4), breaks = c(1:4)) +
+    facet_grid(wave~domain + item) +
+    theme_minimal()
+```
+
+```{r}
+key_list = list(academic = c("Q1", "Q6"),
+                social = c("Q2", "Q7"))
+
+id[13:14] = psych::scoreItems(key_list, id[,-c(1:2)], min = 1, max = 4)$scores
+
+id = id %>%
+  rename("academic" = V1,
+         "social" = V2) %>%
+  select(-starts_with("Q")) %>%
+  gather(domain, importance, academic, social)
+```
+
+## check scored distribution
+```{r}
+id %>%
+  ggplot(aes(importance, fill = domain)) +
+    geom_density(alpha = .5, color = NA) +
+    scale_x_continuous(limits = c(1,4), breaks = c(1:4)) +
+    facet_grid(~wave) +
+    theme_minimal()
+```
+
+# correlation between sppc and id
+```{r}
+sppc %>%
+  left_join(., id, by = c("subjectID", "wave", "domain")) %>%
+  select(subjectID, wave, domain, competence, importance) %>%
+  ggplot(aes(competence, importance, color = wave)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_grid(~domain) +
+  theme_minimal()
+```
+
+# merge and save
+```{r}
+sppc %>%
+  left_join(., id, by = c("subjectID", "wave", "domain")) %>%
+  select(subjectID, wave, domain, competence, importance) %>%
+  saveRDS(., "../../data/sppc.RDS")
+```

@@ -1,0 +1,622 @@
+---
+title: "Clean task data"
+author: "Dani Cosme"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    highlight: tango
+    theme: united
+    toc: true
+    toc_float: 
+      collapsed: TRUE
+      smooth_scroll: TRUE
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+This document provides the code for the analyses reported in:
+
+[Cosme et al. (Preprint) Testing the adolescent social reorientation model using hierarchical growth curve modeling with parcellated fMRI data](https://psyarxiv.com/8eyf5/)
+
+This script cleans the self/other task data for the analyses reported in supplementary material.
+
+# load packages
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(stringr)
+```
+
+# load task data
+```{r}
+# define variables and paths
+datadir = "/Volumes/psych-cog/dsnlab/SFIC/behavior/task/"
+sub_pattern = "L[0-3]{1}([0-9]{2})"
+waves = list.files(datadir, pattern = "t[1-3]{1}")
+
+# initialize data frame
+data = data.frame()
+
+# load data
+for (wave in waves) {
+  wavedir = paste0(datadir, wave, "/RTs_txt/")
+  subs = list.files(wavedir, pattern = sub_pattern)
+  for (sub in subs) {
+    filename = paste0(wavedir, sub)
+    tmp = tryCatch(read.table(filename, header = FALSE, sep = "\t", fill = TRUE, skipNul = TRUE) %>%
+                              mutate(file = filename,
+                                     wave = wave,
+                                     V1 = str_replace(V1, "\\*", "000")) %>%
+                              extract(file, "subjectID", sub_pattern) %>%
+                              mutate(subjectID = paste0("s0", subjectID),
+                                     subFile = sub) %>%
+                              extract(V1, "script", ".*000(.*)_.*", remove = FALSE) %>% 
+                              extract(V1, "buttons", "([a-zA-Z0-9= ]+).*000.*", remove = FALSE) %>%
+                              mutate(order = ifelse(grepl("vp|vn|pp|pn", V4), .$script[grep("hv", script)], NA),
+                                     yn.key = ifelse(grepl("vp|vn|pp|pn", V4), .$buttons[grep("1|2|3|4|g|r|b|y", buttons)], NA)) %>%
+                              filter(!is.na(order)) %>%
+                              filter(!V1 == "\026\001\020\f\003\f\b8list\001reco\030\001pjstenum\004deft") %>%
+                              rename("rt" = V2,
+                                     "trial.end" = V3,
+                                     "stimulus" = V4,
+                                     "response" = V5) %>%
+                              mutate(trial = row_number()) %>%
+                              mutate_all(as.character) %>%
+                              select(subFile, subjectID, wave, order, yn.key, trial, rt, trial.end, stimulus, response),
+                   error = function(e) NULL)
+      
+    data = bind_rows(data, tmp)
+  }
+}
+```
+
+# load age and merge
+```{r}
+# load 
+age = read.csv("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/SFIC_age.pds.gender.csv") %>%
+  rename("subjectID" = SID,
+         "wave" = wavenum,
+         "gender" = Gender) %>%
+  mutate(subjectID = sprintf("s%03d", subjectID),
+         wave = paste0("t", wave)) %>%
+  select(-c(DOB, session))
+
+# merge
+data = data %>%
+  left_join(., age)
+```
+
+
+# check number of trials per participant
+```{r}
+# check number of trials for all participants
+data %>%
+  group_by(subjectID, wave) %>%
+  summarise(n.trials = n()) %>%
+  arrange(desc(n.trials))
+
+# check irregular number of trials
+data %>%
+  filter(subjectID %in% c("s030", "s035", "s018", "s027", "s063", "s081")) %>%
+  group_by(subFile, subjectID, wave) %>%
+  summarise(n.trials = n()) %>%
+  arrange(desc(n.trials))
+```
+
+# select correct responses
+* s030 t3 - From the log: "Ran Self two times. The first time the computer was not recording his responses. The second run is good and what should be used."  
+    * There are actually 3 runs of the self task in the file  
+    * The order for this participant is `hpsphvsv`  
+    * The first is order `hpsphvsv` and lacks responses  
+    * The second is order `hvsvhpsp` and has responses  --> this is a copy of s019 t3 (timing and responses match)
+    * The third is order `hpsphvsv` and has responses  --> using this run
+
+* s035 t2 - No note in the log, but `L235 -2` has the correct order hpsphvsv --> using `L235 -2` (second start; yn key = 12)
+* s018 t3 - No note in the log, but `L318-928226` is the subject ID listed --> using `L318-928226.txt`  
+* s027 t1 - No note in the log, but the first run has `!` as a response for many of the trials --> using second run  
+* s063 t1 - No note in the log (?), but was restarted --> remove 19 trials (yn key = 34)
+* s081 t3 - No note in the log, but the first run only has 16 trials and no responses --> using second run  
+```{r}
+s030_t3 = data %>%
+  filter(subjectID == "s030" & wave == "t3") %>%
+  slice(-1:-160) %>%
+  mutate(order = "hpsphvsv") %>%
+  mutate(trial = as.character(row_number()))
+
+s035_t2 = data %>%
+  filter(subFile == "L235 - 2.txt") %>%
+  slice(-1:-16) %>%
+  mutate(trial = as.character(row_number()),
+         yn.key = "12")
+
+s027_t1 = data %>%
+  filter(subjectID == "s027" & wave == "t1") %>%
+  slice(-1:-80) %>%
+  mutate(trial = as.character(row_number()),
+         yn.key = "34")
+
+s063_t1 = data %>%
+  filter(subjectID == "s063" & wave == "t1") %>%
+  slice(-1:-19) %>%
+  mutate(trial = as.character(row_number()),
+         yn.key = "34")
+
+s081_t3 = data %>%
+  filter(subjectID == "s081" & wave == "t3") %>%
+  slice(-1:-16) %>%
+  mutate(trial = as.character(row_number()))
+
+# filter out subjects original data and then bind subsetted data
+data1 = data %>%
+  filter(!subFile == "L318-085822.txt") %>%
+  filter(!(subjectID  == "s030" & wave == "t3")) %>%
+  filter(!(subjectID  == "s035" & wave == "t2")) %>%
+  filter(!(subjectID  == "s027" & wave == "t1")) %>%
+  filter(!(subjectID  == "s063" & wave == "t1")) %>%
+  filter(!(subjectID  == "s081" & wave == "t3")) %>%
+  bind_rows(., s030_t3) %>%
+  bind_rows(., s035_t2) %>%
+  bind_rows(., s027_t1) %>%
+  bind_rows(., s063_t1) %>%
+  bind_rows(., s081_t3)
+
+# check number of rows
+nrow(data1) == nrow(data) - 80 - 160 - 96 - 80 - 19 - 16
+```
+
+# check button reponses
+```{r}
+# unique button responses for all participants
+(buttons = data1 %>% 
+   group_by(wave, yn.key, subjectID, response) %>% 
+   summarize(n = n()) %>%
+   arrange(wave, subjectID))
+
+# unique responses across participants
+unique(buttons$response)
+```
+
+# manual changes
+Manual changes to some text files were made to facilitate loading the data into r. When the yes/no key was on a separate line from the condition order, the line was removed. When strange characters were included before the yes/no key they were removed. 
+
+For all other errors, these will be addressed directly in r. The original, raw data is still intact as binary files in `SFIC/behavor/[wave]/RTs`.
+
+#### T1 changes
+* s027 - removed line, removed character in line 1  
+* s070 - removed character  
+* s019 - removed line  
+* s039 - removed line  
+* s041 - removed line and character
+* s046 - removed line  
+* s063 - removed line and character
+* s067 - removed line  
+* s079 - removed line  
+
+#### T2 changes
+* s001 - removed line
+* s011 - removed character
+* s017 - removed character
+* s078 - copied from line 1  
+* s057 - removed character  
+* s070 - removed line
+* s073 - removed line  
+
+#### T3 changes
+* s019 - removed line
+* s035 - removed line
+* s057 - removed character
+* s064 - entered first line to a new line
+* s090 - removed character
+
+# recode yes/no key
+#### Relevant notes from T1 log files
+* s001 - no responses recorded
+* s002 - r = yes, g = no
+* s005 - g = yes, r = no
+* s006 - g = yes, r = no
+* s008 - g = yes, r = no
+* s009 - r = yes, g = no
+* s027 - re-ran scan to collect responses
+* s034 - 3 = yes, 4 = no (difficulty hearing phrases)
+* s093 - missing last 19s during rest block
+
+#### Relevant notes from T2 log files
+* s045 - Restarted self run after 3 mins because "no" button was not working
+* s070 - Do Not Use. Subject scooted WAY down by this scan. Registration from HiRes is no good
+
+#### Relevant notes from T3 log files
+* s030 - Ran Self two times. The first time the computer was not recording his responses. The second run is good and what should be used.  
+    * Note this is actually the third run (second run is a copy of s019 t3)
+
+```{r}
+# check keys
+unique(data1$yn.key)
+
+# select responses to recode
+yn.gr = c("grrggggggggggggg", "grrggr", "grr")
+yn.34 = c("3333333334", "3434", "4=no 3=yes", "34343434", "344", "3=yes 4=no")
+yn.12 = c("1212121212121212112222211121212121212121212121212111112", "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", "122", "b12", "121212", "121", "2", "1212", "111222", "bb12", "b")
+
+# recode responses
+data2 = data1 %>%
+  mutate(yn.key = ifelse(yn.key %in% yn.gr, "gr",
+                  ifelse(yn.key %in% yn.34, "34",
+                  ifelse(yn.key %in% yn.12, "12", yn.key))),
+         yn.key = ifelse(wave == "t1" & subjectID %in% c("s002"), "rg",
+                  ifelse(wave == "t2" & subjectID == "s065", "12", yn.key)))
+
+# check keys
+unique(data2$yn.key)
+
+# summarize response types
+data2 %>%
+  group_by(yn.key) %>%
+  summarize(n = n())
+
+# summarize response types by wave
+data2 %>%
+  group_by(yn.key, wave) %>%
+  summarize(n = n()) %>%
+  arrange(wave) %>%
+  select(wave, everything())
+
+# summarize response types by subject and wave
+data2 %>%
+  group_by(subjectID, yn.key, wave) %>%
+  summarize(n = n()) %>%
+  arrange(wave) %>%
+  select(wave, everything())
+```
+
+# check responses for missing button orders
+* based on the breakdown by wave, it looks like the y/n order for T3 is very likely 12
+* for the one T1 participant missing the y/n order, there's a higher probability that it was gr, but we can't be sure. **How do we want to deal with this data?**
+
+```{r}
+buttons %>% 
+  filter(is.na(yn.key)) %>%
+  arrange(wave, subjectID)
+
+missing.buttons.t1 = buttons %>% 
+  filter(is.na(yn.key) & wave == "t1")
+
+missing.buttons.t2 = buttons %>% 
+  filter(is.na(yn.key) & wave == "t2")
+
+missing.buttons.t3 = buttons %>% 
+  filter(is.na(yn.key) & wave == "t3")
+
+missing.buttons.t1 = unique(missing.buttons.t1$subjectID)
+missing.buttons.t2 = unique(missing.buttons.t2$subjectID)
+missing.buttons.t3 = unique(missing.buttons.t3$subjectID)
+```
+
+# describe rt
+* exclude 0 because this is only used for missing responses
+
+```{r}
+data2.g0 = data2 %>%
+  mutate(rt = as.numeric(rt)) %>%
+  select(subjectID, wave, rt, response)
+
+data2.g0 %>%
+  select(rt) %>%
+  filter(!rt == 0) %>%
+  psych::describe(quant = c(.25, .75))
+
+# plot RTs for all responses
+data2.g0 %>%
+  mutate(`previous missed` = ifelse(lag(rt) == 0, "yes", "no")) %>%
+  filter(!is.na(`previous missed`) & !rt == 0) %>%
+  ggplot(aes("", rt, color = `previous missed`)) +
+    geom_boxplot() + 
+    geom_jitter(width = 0.1, alpha = .1) + 
+    facet_grid(~wave) +
+    labs(x = "") + 
+    theme_minimal()
+
+# plot RTs by response
+data2.g0 %>%
+  mutate(`previous missed` = ifelse(lag(rt) == 0, "yes", "no"),
+         n.char = nchar(response)) %>%
+  filter(!is.na(`previous missed`) & !rt == 0) %>%
+  ggplot(aes("", rt, color = `previous missed`)) +
+    geom_boxplot() + 
+    geom_jitter(width = 0.1, alpha = .1) + 
+    facet_grid(n.char ~wave) +
+    labs(x = "") + 
+    theme_minimal()
+
+# plot RTs for the first time hearing each stimulus only
+data %>%
+  mutate(rt = as.numeric(rt),
+         `previous missed` = ifelse(lag(rt) == 0, "yes", "no"),
+         n.char = nchar(response),
+         trial = as.numeric(trial),
+         keep = ifelse(trial %in% c(1:20, 41:60), 1, 0)) %>%
+  filter(!is.na(`previous missed`) & !rt == 0 & keep == 1) %>%
+  ggplot(aes("", rt, color = `previous missed`)) +
+    geom_boxplot() + 
+    geom_jitter(width = 0.1, alpha = .1) + 
+    facet_grid(~wave) +
+    labs(x = "") + 
+    theme_minimal()
+
+# density plots
+data %>%
+  mutate(rt = as.numeric(rt),
+         `previous missed` = ifelse(lag(rt) == 0, "yes", "no"),
+         n.char = nchar(response),
+         trial = as.numeric(trial),
+         keep = ifelse(trial %in% c(1:20, 41:60), 1, 0)) %>%
+  filter(!is.na(`previous missed`) & !rt == 0 & keep == 1) %>%
+  ggplot(aes(rt, fill = `previous missed`)) +
+    geom_density(alpha = .75) + 
+    facet_grid(~wave) +
+    labs(x = "") + 
+    theme_minimal()
+
+# plot RTs of trials where the previous trial was missed and there are 2 responses
+data2.g0 %>%
+  group_by(subjectID, wave) %>%
+  mutate(n.char = nchar(response)) %>%
+  filter(lag(rt) == 0 & n.char > 1) %>%
+  ggplot(aes("", rt)) +
+  geom_violin() + 
+  geom_jitter(width = 0.1, alpha = .25) + 
+  facet_grid(~wave) + 
+  labs(x = "") + 
+  theme_minimal()
+
+# plot RTs of trials where the previous trial was missed is one response
+data2.g0 %>%
+  group_by(subjectID, wave) %>%
+  mutate(n.char = nchar(response)) %>%
+  filter(lag(rt) == 0 & n.char == 1) %>%
+  ggplot(aes("", rt)) +
+  geom_violin() + 
+  geom_jitter(width = 0.1, alpha = .25) + 
+  facet_grid(~wave) + 
+  labs(x = "") + 
+  theme_minimal()
+
+quantile(filter(data2.g0, wave == "t1")$rt, seq(0,1,.1))
+quantile(filter(data2.g0, wave == "t2")$rt, seq(0,1,.1))
+quantile(filter(data2.g0, wave == "t3")$rt, seq(0,1,.1))
+```
+
+# fix responses
+There are missing responses and multiple responses. 
+
+Coding rules:
+
+* if the response for trial 1 is missing and trial 2 is < 1s and has multiple response, code trial 1 as the first response and trial 2 as the second (or third) response
+* if the response for trial 1 is missing and the trial 2 RT < .75s, code trial 1 as the first response
+    * if trial 2 only has one response, trial 2 will no longer have a response  
+    * if trial 2 has more than one response, trial 2 will be the second 
+* if multiple responses, use the last response
+
+```{r}
+(data3 = data2 %>%
+  mutate(rt = as.numeric(rt),
+         trial = as.numeric(trial),
+         quick = ifelse(rt <= 1 & rt > 0, 1, 0),
+         n.char = nchar(response),
+         first = substring(response, 1, 1),
+         second = substring(response, 2, 2),
+         third = substring(response, 3, 3)))
+
+# describe rts
+data3 %>%
+  mutate(rt.bin = ifelse(rt > 0 & rt <= .25, "lt.25",
+                  ifelse(rt > .25 & rt <= .5, "lt.5",
+                  ifelse(rt > .5 & rt <= .75, "lt.75",
+                  ifelse(rt > .75 & rt <= 1, "lt.1", "gt.1"))))) %>%
+  group_by(rt.bin, wave) %>%
+  summarize(n = n()) %>%
+  spread(wave, n)
+
+# describe average RT by subject
+data3 %>%
+  filter(rt > 0) %>%
+  group_by(subjectID, wave) %>%
+  summarize(q10 = quantile(rt, .1, na.rm = TRUE),
+            q25 = quantile(rt, .25, na.rm = TRUE),
+            q50 = quantile(rt, .5, na.rm = TRUE),
+            mean.rt = mean(rt, na.rm = TRUE),
+            threshold = mean.rt - sd(rt, na.rm = TRUE))
+
+# summarize issues
+data3 %>%
+  group_by(subFile) %>%
+  mutate(issue = ifelse(response == "" & lead(rt) < .5 & lead(n.char) == 1, "missed, RT <.5, 1 response",
+                 ifelse(response == "" & lead(rt) >= .5 & lead(rt) < .75 & lead(n.char) == 1, "missed, .5< RT <.75, 1 response",
+                 ifelse(response == "" & lead(rt) >= .75 & lead(rt) < 1 & lead(n.char) == 1, "missed, .75< RT <1, 1 response",
+                 ifelse(response == "" & lead(rt) < 1 & lead(n.char) == 2, "missed, RT <1, 2 responses",
+                 ifelse(response == "" & lead(rt) < 1 & lead(n.char) == 3, "missed, RT <1, 3 responses",
+                 ifelse(lead(rt) < 1 & lead(n.char) == 1, "not missed, RT <1, 1 response", 
+                 ifelse(lead(rt) < 1 & lead(n.char) > 1, "not missed, RT <1, >1 response", NA)))))))) %>%
+  group_by(issue, wave) %>%
+  summarize(n = n()) %>%
+  spread(wave, n)
+
+# check potential recoding responses
+data.check = data3 %>%
+  group_by(subFile) %>%
+  mutate(response.fixed = ifelse(lag(response) == "" & rt <= .75 & n.char == 1, "", response), #missed, RT <.75, 1 response
+         response.fixed = ifelse(response == "" & lead(rt) <= .75 & lead(n.char) == 1, lead(first), #missed, RT <.75, 1 response
+                          ifelse(response == "" & lead(rt) > .75 & lead(rt) < 1 & lead(n.char) == 1, response, #missed, .75< RT <1, 1 response
+                          ifelse(response == "" & lead(rt) < 1 & lead(n.char) == 2, lead(first), #missed, RT <1, 2 responses
+                          ifelse(response == "" & lead(rt) < 1 & lead(n.char) == 3, lead(first), #missed, RT <1, 3 responses
+                          ifelse(n.char == 2, second, #2 responses
+                          ifelse(n.char == 3, third, #3 responses
+                          ifelse(trial == 80, response, 9999))))))), #response
+         response.fixed = ifelse(response == "" & lead(rt) > .75 & lead(rt) < 1 & lead(n.char) == 1, "00", response.fixed), #missed, .75< RT <1, 1 response
+         response.check = ifelse(response.fixed == 9999, 0, 1), 
+         response.check = ifelse(lag(response.check) == 1, 1, response.check)) %>%
+  filter(response.check == 1)
+
+# recode responses
+data4 = data3 %>%
+  group_by(subFile) %>%
+  mutate(response.fixed = ifelse(lag(response) == "" & rt <= .75 & n.char == 1, "", response), #missed, RT <.75, 1 response
+         response.fixed = ifelse(response == "" & lead(rt) <= .75 & lead(n.char) == 1, lead(first), #missed, RT <.75, 1 response
+                          ifelse(response == "" & lead(rt) > .75 & lead(rt) < 1 & lead(n.char) == 1, response, #missed, .75< RT <1, 1 response
+                          ifelse(response == "" & lead(rt) < 1 & lead(n.char) == 2, lead(first), #missed, RT <1, 2 responses
+                          ifelse(response == "" & lead(rt) < 1 & lead(n.char) == 3, lead(first), #missed, RT <1, 3 responses
+                          ifelse(n.char == 2, second, #2 responses
+                          ifelse(n.char >= 3, third, #3 responses
+                          ifelse(trial == 80, response, response.fixed))))))))
+
+# summarize affected trials
+data3 %>%
+  group_by(subFile) %>%
+  mutate(issue = ifelse(response == "" & lead(rt) <= .75 & lead(n.char) == 1, "issue",
+                 ifelse(response == "" & lead(rt) > .75 & lead(rt) < 1 & lead(n.char) == 1, "issue",
+                 ifelse(response == "" & lead(rt) < 1 & lead(n.char) == 2, "issue",
+                 ifelse(response == "" & lead(rt) < 1 & lead(n.char) == 3, "issue", "no issue"))))) %>%
+  filter(!is.na(issue)) %>% #filter out missing last trials
+  group_by(issue, wave) %>%
+  summarize(n = n()) %>%
+  group_by(wave) %>%
+  mutate(percent = round((n / sum(n)) * 100, 1)) %>%
+  group_by(issue) %>%
+  mutate(n_issue = sum(n)) %>%
+  ungroup() %>%
+  mutate(percent_issue = round((664 / (664 + 11959)) * 100, 1))
+  
+
+# print unique responses
+unique(data4$response.fixed)
+
+# get percentage of missed trials
+(missed = data4 %>%
+  mutate(response.fixed = ifelse(response.fixed %in% c("g", "r", "3", "4", "1", "2", "b", "y"), "response", NA)) %>%
+  group_by(subjectID, wave, response.fixed) %>%
+  summarize(n = n()) %>%
+  spread(response.fixed, n) %>%
+  mutate(percent = round((`<NA>` / 80) * 100, 1)) %>%
+  arrange(desc(percent)))
+
+missed %>%
+  ggplot(aes(percent)) +
+    geom_histogram() + 
+    theme_minimal()
+```
+
+# recode responses to yes/no
+* if s017 is coded "rg" social and academic status biases become negative
+* if missing t1 data are coded "21" status biases become < 50%
+* if missing t3 data are coded "21" status biases become < 50%
+
+```{r}
+unique(data4$yn.key)
+
+missing.yn = data4 %>%
+  filter(is.na(yn.key))
+
+data5 = data4 %>%
+  mutate(yn.key = ifelse(is.na(yn.key) & wave == "t1" & subjectID == "s017" , "gr",
+                  ifelse(is.na(yn.key) & wave == "t2" & subjectID == "s018" , "12",
+                  ifelse(is.na(yn.key) & wave == "t2" & subjectID == "s042" , "12",
+                  ifelse(is.na(yn.key) & wave == "t3", "12", yn.key)))),
+         response.yn = ifelse(yn.key == "gr" & response.fixed == "g", "yes",
+                       ifelse(yn.key == "gr" & response.fixed == "r", "no",
+                       ifelse(yn.key == "rg" & response.fixed == "r", "yes",
+                       ifelse(yn.key == "rg" & response.fixed == "g", "no",
+                       ifelse(yn.key == "43" & response.fixed == "4", "yes",
+                       ifelse(yn.key == "43" & response.fixed == "3", "no",
+                       ifelse(yn.key == "34" & response.fixed == "3", "yes",
+                       ifelse(yn.key == "34" & response.fixed == "4", "no",
+                       ifelse(yn.key == "12" & response.fixed == "1", "yes",
+                       ifelse(yn.key == "12" & response.fixed == "2", "no", NA)))))))))))
+
+unique(data5$response.yn)
+```
+
+# recode stimuli
+```{r}
+unique(data5$order)
+
+data6 = data5 %>%
+  mutate(trial = as.numeric(trial),
+         target = ifelse(grepl("^h", order) & trial %in% c(1:20, 41:60), "other",
+                  ifelse(grepl("^h", order) & trial %in% c(21:40, 61:80), "self",
+                  ifelse(grepl("^s", order) & trial %in% c(1:20, 41:60), "self",
+                  ifelse(grepl("^s", order) & trial %in% c(21:40, 61:80), "other", NA)))),
+         domain = ifelse(grepl("^v", stimulus), "academic", "social"),
+         valence = ifelse(grepl("vp|pp", stimulus), "positive", "negative"))
+
+unique(data6$target)
+unique(data6$domain)
+unique(data6$valence)
+```
+
+# create subjective social status/verbal academic competence metric
+* Note that s029 t3 only has responses for the other academic block; no responses were recoded for the other blocks
+
+```{r}
+data.status = data6 %>%
+  group_by(subjectID, wave, domain, target, valence, response.yn) %>%
+  summarize(age = mean(age),
+            n = n()) %>%
+  spread(response.yn, n) %>%
+  mutate(no = ifelse(is.na(no), 0, no),
+         yes = ifelse(is.na(yes), 0, yes),
+         n = no + yes,
+         status = ifelse(valence == "negative", no,
+                  ifelse(valence == "positive", yes, NA))) %>%
+  group_by(subjectID, wave, domain, target) %>%
+  mutate(n_response = sum(n, na.rm = TRUE),
+         n_NA = sum(`<NA>`, na.rm = TRUE),
+         task_net = sum(status, na.rm = TRUE),
+         task_percent = (task_net / n_response) * 100,
+         task_percent1 = ifelse(is.nan(task_percent), NA, task_percent)) %>%
+  select(-c(valence, yes, no, n, status, `<NA>`))
+
+data.status %>%
+  ggplot(aes(wave, task_percent, color = target)) +
+    geom_violin() + 
+    geom_jitter(width = 0.2, alpha = .2) +
+    facet_grid(target ~ domain) +
+    theme_minimal() +
+    theme(legend.position = "none")
+```
+
+# check status bias
+```{r}
+# social and academic
+data.status %>%
+  filter(target == "self") %>%
+  arrange(task_percent)
+
+# social only
+data.status %>%
+  filter(target == "self" & domain == "social") %>%
+  arrange(task_percent)
+
+# for participants missing yn.key
+data.status %>%
+  filter(target == "self" & ((subjectID %in% missing.buttons.t1 & wave == "t1") | (subjectID %in% missing.buttons.t2 & wave == "t2") | (subjectID %in% missing.buttons.t3 & wave == "t3"))) %>%
+  arrange(task_percent)
+
+data.status %>%
+  filter(target == "self" & domain == "social" & ((subjectID %in% missing.buttons.t1 & wave == "t1") | (subjectID %in% missing.buttons.t2 & wave == "t2") | (subjectID %in% missing.buttons.t3 & wave == "t3")))
+
+data.status %>%
+  filter(target == "self" & ((subjectID %in% missing.buttons.t1 & wave == "t1") | (subjectID %in% missing.buttons.t2 & wave == "t2") | (subjectID %in% missing.buttons.t3 & wave == "t3"))) %>%
+  arrange(subjectID)
+```
+
+# save
+```{r}
+data.status %>%
+  select(subjectID, wave, domain, target, task_percent) %>%
+  unique() %>%
+  saveRDS(., "../../data/task.RDS")
+```
+
+

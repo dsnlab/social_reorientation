@@ -1,5 +1,5 @@
 ---
-title: "Neural Analyses"
+title: "Main manuscript analyses"
 author: "Dani Cosme"
 date: "`r Sys.Date()`"
 output:
