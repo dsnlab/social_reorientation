@@ -19,7 +19,7 @@ The analyses reported in supplementary material are reported [here](https://dsnl
 
 ```
 ├── analysis
-│	├── clean_behavioral_data
+│ ├── clean_behavioral_data
 ├── data
 ├── mri
 │	├── auto-motion
