@@ -19,16 +19,16 @@ The analyses reported in supplementary material are reported [here](https://dsnl
 
 ```
 ├── analysis
-│ ├── clean_behavioral_data
+│   ├── clean_behavioral_data
 ├── data
 ├── mri
-│	├── auto-motion
-│	├── fx
-│	├── parcellations
-│	├── ppc
-│	└── rx
-│	    └── thresholding
-│	        └── output
+│   ├── auto-motion
+│   ├── fx
+│   ├── parcellations
+│   ├── ppc
+│   └── rx
+│       └── thresholding
+│           └── output
 └── shiny_app
     └── growth_curves
         └── data
