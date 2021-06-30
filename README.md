@@ -3,6 +3,13 @@ Code and data to reproduce the analyses reported in the manuscript:
 
 [Cosme et al. (Preprint) Testing the adolescent social reorientation model using hierarchical growth curve modeling with parcellated fMRI data](https://psyarxiv.com/8eyf5/)
 
+## Compiled analysis files
+
+The analyses reported in the main manuscript are reported [here](https://dsnlab.github.io/social_reorientation/analysis/main_analyses)
+
+The analyses reported in supplementary material are reported [here](https://dsnlab.github.io/social_reorientation/analysis/main_analyses)
+
+
 ## Directory structure
 
 * analysis = Contains the code to reproduce the analyses in the main manuscript and supplementary material
