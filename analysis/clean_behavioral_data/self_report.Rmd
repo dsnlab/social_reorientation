@@ -39,7 +39,8 @@ t1_sppc = readxl::read_excel("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/lerner/
          wave = "t1") %>%
   gather(question, value, starts_with("Q")) %>%
   mutate(value = ifelse(value %in% c("9999", "1,3", "2,3", "2,4"), NA, value)) %>%
-  spread(question, value)
+  spread(question, value) %>%
+  select(-`...38`)
 
 t2_sppc = readxl::read_excel("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/lerner/T2Lerner_Enter-Check_AT.xls", sheet = "What I Am Like") %>%
   filter(!is.na(SID)) %>%
@@ -48,7 +49,8 @@ t2_sppc = readxl::read_excel("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/lerner/
          wave = "t2") %>%
   gather(question, value, starts_with("Q")) %>%
   mutate(value = ifelse(value %in% c("9999", "2,4"), NA, value)) %>%
-  spread(question, value)
+  spread(question, value) %>%
+  select(-`...38`)
 
 t3_sppc = readxl::read_excel("/Volumes/psych-cog/dsnlab/SFIC_data_sheets/lerner/T3Lerner_Enter-Check_AT.xls", sheet = "What I am like") %>%
   filter(!is.na(SID)) %>%
@@ -118,15 +120,17 @@ sppc %>%
 
 ```{r}
 key_list = list(academic = c("-Q1", "-Q7", "Q13", "Q19", "-Q25", "Q31"),
-                social = c("Q2", "-Q8", "Q14", "-Q20", "Q26", "Q32"))
+                social = c("Q2", "-Q8", "Q14", "-Q20", "Q26", "-Q32"),
+                self_worth = c("Q6", "Q12", "-Q18", "-Q24", "-Q30", "Q36"))
 
-sppc[40:41] = psych::scoreItems(key_list, sppc[,-c(1:3)], min = 1, max = 4)$scores
+sppc[39:41] = psych::scoreItems(key_list, sppc[,-c(1:2)], min = 1, max = 4)$scores
 
 sppc = sppc %>%
   rename("academic" = V1,
-         "social" = V2) %>%
+         "social" = V2,
+         "self_worth" = V3) %>%
   select(-starts_with("Q")) %>%
-  gather(domain, competence, academic, social)
+  gather(domain, competence, academic, social, self_worth)
 ```
 
 ## check scored distribution
@@ -204,6 +208,7 @@ id %>%
 ```{r}
 sppc %>%
   left_join(., id, by = c("subjectID", "wave", "domain")) %>%
+  filter(!domain == "self_worth") %>%
   select(subjectID, wave, domain, competence, importance) %>%
   ggplot(aes(competence, importance, color = wave)) +
   geom_point() +

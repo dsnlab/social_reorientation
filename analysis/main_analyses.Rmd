@@ -181,6 +181,18 @@ gender_table = merged %>%
   rename("Female" = F,
          "Male" = M)
 
+merged %>% 
+  filter(!inclusion == "didn't complete MRI") %>%
+  mutate(inclusion = ifelse(grepl("excluded", inclusion), "excluded", "included")) %>%
+  select(subjectID, wave, gender, age, inclusion) %>%
+  unique() %>%
+  filter(inclusion == "included") %>%
+  group_by(subjectID) %>%
+  summarize(`number of waves included` = n()) %>%
+  group_by(`number of waves included`) %>%
+  summarize(n = n()) %>%
+  kable(format = 'pandoc')
+
 age_table %>%
   left_join(gender_table) %>%
   extract(wave, "Wave", "t([1-3]{1})") %>%
@@ -526,8 +538,8 @@ Estimate full models
 # specify model
 model_domain_equation = formula(beta_std ~ 1 + age_c*domain*label +
                                   age_c2*domain*label +
-                                  (1 + age_c*domain || subjectID) +
-                                  (1 + age_c*domain + age_c2*domain || parcellation))
+                                  (1 + domain + age_c | subjectID) +
+                                  (1 + domain + age_c + age_c2 | parcellation))
 
 model_domain_formula = lFormula(model_domain_equation, data = neuro_model_data_dummy)
 
@@ -539,7 +551,7 @@ model_domain_numRx = sum(as.numeric(lapply(model_domain_formula$reTrms$cnms, fun
   (l*(l - 1)) / 2 + l
 })))
 
-model_domain_maxfun = 10*(model_domain_numFx + model_domain_numRx + 1)^2
+model_domain_maxfun = 50*(model_domain_numFx + model_domain_numRx + 1)^2
 
 # run or load the model
 if (file.exists("../data/model_domain.RDS")) {
@@ -557,8 +569,8 @@ if (file.exists("../data/model_domain.RDS")) {
 # specify model
 model_target_equation = formula(beta_std ~ 1 + age_c*target*domain*label +
                                   age_c2*target*domain*label +
-                                  (1 + age_c*target*domain || subjectID) +
-                                  (1 + age_c*target*domain + age_c2*target*domain || parcellation))
+                                  (1 + age_c*target*domain | subjectID) +
+                                  (1 + age_c*target*domain + age_c2*target*domain | parcellation))
 
 # calculate max number of iterations
 model_target_formula = lFormula(model_target_equation, data = neuro_model_data_dummy)
@@ -587,7 +599,7 @@ if (file.exists("../data/model_target.RDS")) {
 ```{r}
 anova(model_domain, model_target) %>%
   as.data.frame() %>%
-  select(npar, AIC, Chisq, Df, `Pr(>Chisq)`) %>%
+  select(npar, AIC, BIC, Chisq, Df, `Pr(>Chisq)`) %>%
   rownames_to_column() %>%
   rename("model" = rowname,
          "model df" = Df,
@@ -595,6 +607,7 @@ anova(model_domain, model_target) %>%
          "X2 df" = Df,
          "p" = `Pr(>Chisq)`) %>%
   mutate(AIC = round(AIC, 2),
+         BIC = round(BIC, 2),
          X2 = round(X2, 2),
          p = round(p, 3),
          p = ifelse(p == 0, "< .001", gsub("0.(.*)", ".\\1", p))) %>%
@@ -694,7 +707,7 @@ social_self %>%
 Visualize the developmental trajectory using the fitted values from the domain x target x age model
 
 ```{r}
-reForm = as.formula("~(1 + age_c*target*domain + age_c2*target*domain || parcellation)")
+reForm = as.formula("~(1 + age_c*target*domain + age_c2*target*domain | parcellation)")
 
 neuro_plot_data = with(neuro_model_data_dummy, 
                     expand.grid(target = unique(target), 
@@ -767,11 +780,11 @@ domain_plot = neuro_plot_data %>%
   mutate(expected_avg = mean(expected_mean, na.rm = TRUE)) %>%
   distinct(parcellation, target, domain, age, label, .keep_all = T) %>%
   ggplot(aes(x = age, y = expected_avg, color = domain)) +
-  geom_rect(data = subset(label_df, label == "social"), aes(fill = label, color = NA), alpha = .07,
+  geom_rect(data = subset(label_df, label == "social"), aes(fill = label), color = NA, alpha = .07,
             xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
   geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = .2, se = FALSE, size = 1.25) + 
   scale_y_continuous(breaks = seq(-.2, .45, .2)) +
-  coord_cartesian(ylim = c(-.25, .4)) +
+  coord_cartesian(ylim = c(-.25, .45)) +
   scale_color_manual(values = pal_social_academic) +
   scale_fill_manual(values = "lightgrey") +
   scale_x_continuous(breaks = c(10, 13, 16)) + 
@@ -800,7 +813,7 @@ soc_acad_plot = neuro_plot_data %>%
   scale_fill_manual(values = "lightgrey") +
   scale_size_manual(values = c(.03, .1, .1)) +
   scale_y_continuous(breaks = seq(-.2, .45, .2)) +
-  coord_cartesian(ylim = c(-.25, .4)) +
+  coord_cartesian(ylim = c(-.25, .45)) +
   scale_x_continuous(breaks = c(10, 13, 16)) + 
   facet_grid(~ label, labeller = parcel_labeller) +
   labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
@@ -819,11 +832,11 @@ target_plot = neuro_plot_data %>%
   mutate(expected_avg = mean(expected_mean, na.rm = TRUE)) %>%
   distinct(parcellation, target, target, age, label, .keep_all = T) %>%
   ggplot(aes(x = age, y = expected_avg, color = target)) +
-  geom_rect(data = subset(label_df, label == "self"), aes(fill = label, color = NA), alpha = .07,
+  geom_rect(data = subset(label_df, label == "self"), aes(fill = label), color = NA, alpha = .07,
             xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
   geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = .2, se = FALSE, size = 1.25) + 
   scale_y_continuous(breaks = seq(-.2, .3, .1)) +
-  coord_cartesian(ylim = c(-.2, .3)) +
+  coord_cartesian(ylim = c(-.2, .35)) +
   scale_color_manual(values = pal_self_other) +
   scale_fill_manual(values = "lightgrey") +
   scale_x_continuous(breaks = c(10, 13, 16)) + 
@@ -852,7 +865,7 @@ self_other_plot = neuro_plot_data %>%
   scale_fill_manual(values = "lightgrey") +
   scale_size_manual(values = c(.03, .1, .1)) +
   scale_y_continuous(breaks = seq(-.2, .3, .1)) +
-  coord_cartesian(ylim = c(-.2, .3)) +
+  coord_cartesian(ylim = c(-.2, .35)) +
   scale_x_continuous(breaks = c(10, 13, 16)) + 
   facet_grid(~ label, labeller = parcel_labeller) +
   labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
@@ -871,7 +884,7 @@ int_plot = neuro_plot_data %>%
   ggplot(aes(x = age, y = expected_mean, group = interaction(target, domain), color = domain, linetype = target)) +
   geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = 1, se = FALSE, size = 1.25) + 
   scale_y_continuous(breaks = c(-.4, -.2, 0, .2, .4)) +
-  coord_cartesian(ylim = c(-.4, .45)) +
+  coord_cartesian(ylim = c(-.4, .5)) +
   scale_color_manual(values = pal_social_academic) +
   scale_linetype_manual(name = "", values = c("dotted", "solid")) +
   scale_x_continuous(breaks = c(10, 13, 16)) + 
@@ -901,7 +914,7 @@ soc_acad_int_plot = neuro_plot_data %>%
   scale_color_manual(values = pal_self_other) +
   scale_size_manual(values = c(.03, .1, .1)) +
   scale_y_continuous(breaks = c(-.4, -.2, 0, .2, .4)) +
-  coord_cartesian(ylim = c(-.4, .45)) +
+  coord_cartesian(ylim = c(-.4, .5)) +
   scale_x_continuous(breaks = c(10, 13, 16)) + 
   facet_grid(~ label, labeller = parcel_labeller) +
   labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
@@ -927,7 +940,7 @@ self_other_int_plot = neuro_plot_data %>%
   scale_color_manual(values = pal_social_academic) +
   scale_size_manual(values = c(.03, .1, .1)) +
   scale_y_continuous(breaks = c(-.4, -.2, 0, .2, .4)) +
-  coord_cartesian(ylim = c(-.4, .45)) +
+  coord_cartesian(ylim = c(-.4, .5)) +
   scale_x_continuous(breaks = c(10, 13, 16)) + 
   facet_grid(~ label, labeller = parcel_labeller) +
   labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +

@@ -46,6 +46,13 @@ parcel_labeller = labeller(label = c('social' = 'social parcels', 'other' = 'con
                            domain = c('social' = 'social domain', 'academic' = 'academic domain'),
                            wave = c("t1" = "wave 1", "t2" = "wave 2", "t3" = "wave 3"))
 
+label_df = expand.grid(label = c("social", "self", "other"),
+              target = c("self", "other"),
+              domain = c("social", "academic"),
+              pdss = 3,
+              expected_avg = 1,
+              expected_diff = 1)
+
 dcbw = theme_classic() +
   theme(text = element_text(size = 14, family = "Futura Medium", color = "black"),
         panel.background = element_blank(),
@@ -122,7 +129,13 @@ demo = read.csv("../data/SFIC_age.pds.gender.csv") %>%
   full_join(., race_ethnicity)
 
 # self-report
-sppc = readRDS("../data/sppc.RDS")
+sppc = readRDS("../data/sppc.RDS") %>%
+  filter(!domain == "self_worth")
+
+sppc_self_worth = readRDS("../data/sppc.RDS") %>%
+  filter(domain == "self_worth") %>%
+  rename("self_worth" = competence) %>%
+  select(-domain, -importance)
 
 # task
 task = readRDS("../data/task.RDS") %>%
@@ -137,6 +150,7 @@ task = readRDS("../data/task.RDS") %>%
 merged = parcellations_ex %>%
   full_join(., task, by = c("subjectID", "wave", "domain", "target")) %>%
   full_join(., sppc, by = c("subjectID", "wave", "domain")) %>%
+  full_join(., sppc_self_worth, by = c("subjectID", "wave")) %>%
   full_join(., demo, by = c("subjectID", "wave")) %>%
   mutate(inclusion = ifelse(is.na(inclusion), "didn't complete MRI", inclusion)) %>%
   filter(!(subjectID == "s086" & wave == "t3")) #no MRI, task, or self-report data was collected
@@ -156,6 +170,11 @@ comp_model_data = merged %>%
 
 imp_model_data = merged %>%
   select(subjectID, wave, pdss, pdss_c, pdss_c2, age, age_c, age_c2, domain, importance) %>%
+  unique() %>%
+  na.omit()
+
+self_worth_model_data = merged %>%
+  select(subjectID, wave, pdss, pdss_c, pdss_c2, age, age_c, age_c2, self_worth) %>%
   unique() %>%
   na.omit()
 
@@ -717,7 +736,7 @@ print(VarCorr(model_target), comp = c("Variance","Std.Dev."), digits = 3)
 Visualize the developmental trajectory using the fitted values from the domain x target x age model
 
 ```{r}
-reForm = as.formula("~(1 + pdss_c*target*domain + pdss_c2*target*domain || parcellation)")
+reForm = as.formula("~(1 + pdss_c*target*domain + pdss_c2*target*domain | parcellation)")
 
 neuro_plot_data_puberty = with(neuro_model_data_dummy_pdss, 
                     expand.grid(target = unique(target), 
@@ -789,10 +808,12 @@ domain_plot = neuro_plot_data_puberty %>%
   mutate(expected_avg = mean(expected_mean, na.rm = TRUE)) %>%
   distinct(parcellation, target, domain, pdss, label, .keep_all = T) %>%
   ggplot(aes(x = pdss, y = expected_avg, color = domain)) +
-  #geom_point(aes(group = target)) + 
   geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = .2, se = FALSE, size = 1.25) + 
+  geom_rect(data = subset(label_df, label == "social"), aes(fill = label), color = NA, alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
   scale_y_continuous(breaks = seq(-.2, .45, .2)) +
   coord_cartesian(ylim = c(-.25, .4)) +
+  scale_fill_manual(values = "lightgrey") +
   scale_color_manual(values = pal_social_academic) +
   facet_grid(~ label, labeller = parcel_labeller) +
   labs(x = "\npubertal stage (PSD score)", y = "mean predicted BOLD signal value\n",  color = '') +
@@ -814,8 +835,11 @@ soc_acad_plot = neuro_plot_data_puberty %>%
               se = FALSE, color = "grey50") +
   geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
               se = FALSE, color = pal_social_academic[2], size = 1.5) + 
+  geom_rect(data = subset(label_df, label == "social"), aes(fill = label), alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
   scale_size_manual(values = c(.03, .1, .1)) +
   scale_y_continuous(breaks = seq(-.2, .45, .2)) +
+  scale_fill_manual(values = "lightgrey") +
   coord_cartesian(ylim = c(-.25, .4)) +
   facet_grid(~ label, labeller = parcel_labeller) +
   labs(x = "\npubertal stage (PSD score)", y = "mean predicted BOLD signal value\n",  color = '') +
@@ -834,11 +858,13 @@ target_plot = neuro_plot_data_puberty %>%
   mutate(expected_avg = mean(expected_mean, na.rm = TRUE)) %>%
   distinct(parcellation, target, target, pdss, label, .keep_all = T) %>%
   ggplot(aes(x = pdss, y = expected_avg, color = target)) +
-  #geom_point(aes(group = target)) + 
   geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = .2, se = FALSE, size = 1.25) + 
+  geom_rect(data = subset(label_df, label == "self"), aes(fill = label), color = NA, alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
   scale_y_continuous(breaks = seq(-.1, .3, .1)) +
   coord_cartesian(ylim = c(-.15, .3)) +
   scale_color_manual(values = pal_self_other) +
+  scale_fill_manual(values = "lightgrey") +
   facet_grid(~ label, labeller = parcel_labeller) +
   labs(x = "\npubertal stage (PSD score)", y = "mean predicted BOLD signal value\n",  color = '') +
   dcbw +
@@ -859,8 +885,11 @@ self_other_plot = neuro_plot_data_puberty %>%
               se = FALSE, color = "grey50") +
   geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
               se = FALSE, color = pal_self_other[2], size = 1.5) + 
+  geom_rect(data = subset(label_df, label == "self"), aes(fill = label), alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
   scale_size_manual(values = c(.03, .1, .1)) +
   scale_y_continuous(breaks = seq(-.1, .3, .1)) +
+  scale_fill_manual(values = "lightgrey") +
   coord_cartesian(ylim = c(-.15, .3)) +
   facet_grid(~ label, labeller = parcel_labeller) +
   labs(x = "\npubertal stage (PSD score)", y = "mean predicted BOLD signal value\n",  color = '') +
@@ -1197,7 +1226,7 @@ cowplot::plot_grid(status_plot_age, status_plot_pdss, labels = c('A', 'B'), ncol
     scale_color_manual(name = "", values = pal_social_academic) +
     scale_fill_manual(name = "", values = pal_social_academic) +
     coord_cartesian(ylim = c(1, 4)) +
-    labs(x = "\npubertal stage (PSD score)", y = "mean competence rating\n") +
+    labs(x = "\nage (years)", y = "mean competence rating\n") +
     dcbw +
     theme(legend.position = c(.88, .2),
           legend.spacing.y = unit(.01, 'cm'),
@@ -1353,7 +1382,7 @@ comp_model_data$expected_mean = predict(model_to_plot, newdata = comp_model_data
     geom_smooth(method = "lm", formula = y ~ poly(x, 2), alpha = .2) +
     scale_color_manual(name = "", values = pal_social_academic) +
     coord_cartesian(ylim = c(1, 4)) +
-    labs(x = "\npubertal stage (PSD score)", y = "SPPC competence rating\n") +
+    labs(x = "\nage (years)", y = "SPPC competence rating\n") +
     dcbw +
     theme(legend.position = "none"))
 ```
@@ -1372,7 +1401,7 @@ comp_model_data$expected_mean = predict(model_to_plot, newdata = comp_model_data
     scale_fill_manual(name = "", values = pal_social_academic) +
     coord_cartesian(ylim = c(1, 4)) +
     scale_x_continuous(limits = c(12, 18), breaks = c(12, 14, 16, 18)) +
-    labs(x = "\npubertal stage (PSD score)", y = "mean importance rating\n") +
+    labs(x = "\nage (years)", y = "mean importance rating\n") +
     dcbw +
     theme(legend.position = c(.88, .2),
           legend.spacing.y = unit(.01, 'cm'),
@@ -1515,7 +1544,7 @@ imp_model_data_na$expected_mean = predict(model_to_plot, newdata = filter(imp_mo
     scale_color_manual(name = "", values = pal_social_academic) +
     scale_x_continuous(limits = c(12, 18), breaks = c(12, 14, 16, 18)) +
     coord_cartesian(ylim = c(1, 4)) +
-    labs(x = "\npubertal stage (PSD score)", y = "SPPC importance rating\n") +
+    labs(x = "\nage (years)", y = "SPPC importance rating\n") +
     dcbw +
     theme(legend.position = c(.88, .14),
           legend.spacing.y = unit(.01, 'cm'),
@@ -1527,4 +1556,181 @@ imp_model_data_na$expected_mean = predict(model_to_plot, newdata = filter(imp_mo
 cowplot::plot_grid(comp_plot_age, imp_plot_age, ncol = 2, labels = c("A", "B"))
 ```
 
+# SPPC global self-worth
+## visualize raw {.tabset}
+### age
+```{r self_worth_age}
+(sw_plot_raw_age = self_worth_model_data %>%
+  ggplot(aes(age, self_worth)) +
+    geom_point(alpha = .1, color = pal_self_other[2]) +
+    geom_line(aes(group = interaction(subjectID)), alpha = .2, color = pal_self_other[2]) +
+    geom_smooth(method = "lm", formula = y ~ poly(x, 2), alpha = .4,
+                color = pal_self_other[2], fill = pal_self_other[2]) +
+    coord_cartesian(ylim = c(1, 4)) +
+    labs(x = "\nage (years)", y = "mean global self-worth rating\n") +
+    dcbw)
+```
 
+### puberty
+```{r self_worth_puberty}
+(sw_plot_raw = self_worth_model_data %>%
+  ggplot(aes(pdss, self_worth, color = domain)) +
+    geom_point(alpha = .1, color = pal_self_other[2]) +
+    geom_line(aes(group = interaction(subjectID)), alpha = .2, color = pal_self_other[2]) +
+    geom_smooth(method = "lm", formula = y ~ poly(x, 2), alpha = .4,
+                color = pal_self_other[2], fill = pal_self_other[2]) +
+    coord_cartesian(ylim = c(1, 4)) +
+    labs(x = "\npubertal stage (PDS score)", y = "mean self_worth rating\n") +
+    dcbw +
+    theme(legend.position = c(.88, .2),
+          legend.spacing.y = unit(.01, 'cm'),
+          legend.margin = unit(0, "cm")))
+```
+
+## run models {.tabset}
+### ICC
+```{r}
+model.icc = anova(lm(self_worth ~ subjectID, data = self_worth_model_data))
+round(model.icc$`Sum Sq`[1] / sum(model.icc$`Sum Sq`), 2)
+```
+
+### age
+
+```{r}
+`sw model 1` = lmer(self_worth ~ 1 + (1 | subjectID), 
+                              data = self_worth_model_data, control = lmerControl(optimizer = "bobyqa"))
+`sw model 2 age` = lmer(self_worth ~ 1 + age_c + 
+                             (1 + age_c | subjectID), 
+                             data = self_worth_model_data, control = lmerControl(optimizer = "bobyqa"))
+`sw model 3 age` = lmer(self_worth ~ 1 + age_c + age_c2 + 
+                             (1 + age_c | subjectID), 
+                             data = self_worth_model_data, control = lmerControl(optimizer = "bobyqa"))
+```
+
+### puberty
+```{r}
+`sw model 2 puberty` = lmer(self_worth ~ 1 + pdss_c + 
+                             (1 + pdss_c | subjectID), 
+                             data = self_worth_model_data, control = lmerControl(optimizer = "bobyqa"))
+`sw model 3 puberty` = lmer(self_worth ~ 1 + pdss_c + pdss_c2 +
+                             (1 + pdss_c | subjectID), 
+                             data = self_worth_model_data, control = lmerControl(optimizer = "bobyqa"))
+```
+
+### compare models {.tabset}
+#### age
+```{r}
+anova(`sw model 1`, `sw model 2 age`, `sw model 3 age`) %>%
+  as.data.frame() %>%
+  select(npar, AIC, Chisq, Df, `Pr(>Chisq)`) %>%
+  rownames_to_column() %>%
+  rename("model" = rowname,
+         "model df" = npar,
+         "X2" = Chisq,
+         "X2 df" = Df,
+         "p" = `Pr(>Chisq)`) %>%
+  mutate(AIC = round(AIC, 2),
+         X2 = round(X2, 2),
+         p = round(p, 3),
+         p = ifelse(p == 0, "< .001", gsub("0.(.*)", ".\\1", p))) %>%
+  mutate_if(is.numeric, funs(ifelse(is.na(.), "--", .))) %>%
+  mutate_if(is.character, funs(ifelse(is.na(.), "--", .))) %>%
+  kable(format = "pandoc")
+```
+
+#### puberty
+```{r}
+anova(`sw model 1`, `sw model 2 puberty`, `sw model 3 puberty`) %>%
+  as.data.frame() %>%
+  select(npar, AIC, Chisq, Df, `Pr(>Chisq)`) %>%
+  rownames_to_column() %>%
+  rename("model" = rowname,
+         "model df" = npar,
+         "X2" = Chisq,
+         "X2 df" = Df,
+         "p" = `Pr(>Chisq)`) %>%
+  mutate(AIC = round(AIC, 2),
+         X2 = round(X2, 2),
+         p = round(p, 3),
+         p = ifelse(p == 0, "< .001", gsub("0.(.*)", ".\\1", p))) %>%
+  mutate_if(is.numeric, funs(ifelse(is.na(.), "--", .))) %>%
+  mutate_if(is.character, funs(ifelse(is.na(.), "--", .))) %>%
+  kable(format = "pandoc")
+```
+
+### summarize best fitting model {.tabset}
+#### puberty
+```{r}
+# summarize best fitting model
+`sw model 2 puberty` %>%
+  broom.mixed::tidy(effects = c("ran_pars", "fixed"), conf.int = TRUE) %>%
+  filter(effect == "fixed") %>%
+  select(-group) %>%
+  rename("b" = estimate,
+         "SE" = std.error,
+         "t" = statistic,
+         "p" = p.value) %>%
+  mutate(p = round(p, 3),
+         p = ifelse(p == 0, "< .001", gsub("0.(.*)", ".\\1", p)),
+         term = gsub("\\(Intercept\\)", "Intercept (PDS 3)", term),
+         term = gsub("pdss_c", "puberty", term),
+         term = gsub("age_c", "age", term),
+         term = gsub(":", " x ", term),
+         term = gsub("sd__", "", term),
+         term = gsub("Observation", "observation", term),
+         effect = gsub("ran_pars", "random", effect),
+         `b [95% CI]` = ifelse(effect == "fixed", sprintf("%.2f [%.2f, %.2f]", b, conf.low, conf.high), "--"),
+         SE = sprintf("%.3f", SE)) %>%
+  mutate_if(is.numeric, round, 2) %>%
+  mutate_if(is.numeric, funs(ifelse(is.na(.), "--", .))) %>%
+  mutate_if(is.character, funs(ifelse(is.na(.), "--", .))) %>%
+  select(term, `b [95% CI]`, SE, t, df, p) %>%
+  kable(format = "pandoc")
+  
+# summarize random effects
+print(VarCorr(`sw model 2 puberty`), comp = c("Variance","Std.Dev."), digits = 4)
+```
+
+### visualize fitted {.tabset}
+#### age
+```{r}
+model_to_plot = `sw model 2 puberty`
+REFormString = as.character(findbars(model_to_plot@call$formula)[[1]])
+reForm = as.formula(paste0('~(', REFormString[[2]], REFormString[[1]], REFormString[[3]], ')'))
+self_worth_model_data$expected = predict(model_to_plot, newdata = self_worth_model_data, re.form = reForm)
+self_worth_model_data$expected_mean = predict(model_to_plot, newdata = self_worth_model_data, re.form = NA)
+
+(sw_plot_pdss = self_worth_model_data %>%
+  ggplot(aes(pdss, expected_mean)) +
+    geom_line(aes(pdss, self_worth, group = subjectID), alpha = .1, color = pal_self_other[2]) +
+    geom_point(aes(pdss, self_worth, group = subjectID), alpha = .4, color = pal_self_other[2]) +
+    geom_smooth(method = "lm", formula = y ~ poly(x, 2), alpha = .4,
+                color = pal_self_other[2], fill = pal_self_other[2]) +
+    scale_color_manual(name = "", values = pal_social_academic) +
+    coord_cartesian(ylim = c(1, 4)) +
+    labs(x = "\npubertal stage (PDS score)", y = "SPPC global self-worth rating\n") +
+    dcbw +
+    theme(legend.position = "none"))
+```
+
+# correlations {.tabset}
+Repeated measures correlations between social and academic competence and importance for self-worth
+
+## competence
+```{r}
+data_comp_corr = comp_model_data %>%
+  select(-expected_mean, -expected) %>%
+  spread(domain, competence) %>%
+  mutate(subjectID = as.factor(subjectID))
+
+rmcorr::rmcorr(subjectID, social, academic, dataset = data_comp_corr)
+```
+
+## importance
+```{r}
+data_imp_corr = imp_model_data %>%
+  spread(domain, importance) %>%
+  mutate(subjectID = as.factor(subjectID))
+
+rmcorr::rmcorr(subjectID, social, academic, dataset = data_imp_corr)
+```
