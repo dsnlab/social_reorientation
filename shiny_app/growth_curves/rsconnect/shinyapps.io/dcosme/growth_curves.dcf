@@ -1,0 +1,13 @@
+name: growth_curves
+title: growth_curves
+username:
+account: dcosme
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4285130
+bundleId: 5284957
+url: https://dcosme.shinyapps.io/growth_curves/
+when: 1637679953.9277
+lastSyncTime: 1637679953.92771
+asMultiple: FALSE
+asStatic: FALSE

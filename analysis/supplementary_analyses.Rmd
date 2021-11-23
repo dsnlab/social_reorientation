@@ -648,6 +648,7 @@ if (file.exists("../data/model_domain_pdss.RDS")) {
   saveRDS(model_domain, "../data/model_domain_pdss.RDS")
 }
 
+summary(model_domain)
 ```
 
 ### domain x target x puberty
@@ -677,6 +678,7 @@ if (file.exists("../data/model_target_pdss.RDS")) {
   saveRDS(model_target, "../data/model_target_pdss.RDS")
 }
 
+summary(model_target)
 ```
 
 ## compare
@@ -727,9 +729,6 @@ model_target %>%
   mutate_if(is.character, funs(ifelse(is.na(.), "--", .))) %>%
   select(term, `b [95% CI]`, SE, t, df, p) %>%
   kable(format = "pandoc")
-  
-# summarize random effects
-print(VarCorr(model_target), comp = c("Variance","Std.Dev."), digits = 3)
 ```
 
 ## visualize fitted models {.tabset}
