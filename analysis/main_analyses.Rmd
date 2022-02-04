@@ -571,8 +571,6 @@ self_other_int_plot_raw = neuro_model_data %>%
 ```
 
 # run models {.tabset}
-Estimate full models
-
 ## domain x age
 ```{r}
 # specify model

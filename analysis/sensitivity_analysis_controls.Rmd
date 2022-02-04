@@ -1,0 +1,1005 @@
+---
+title: "Sensitivity analysis: control parcel definition"
+author: "Dani Cosme"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    code_folding: hide
+    highlight: tango
+    theme: united
+    toc: true
+    toc_float: 
+      collapsed: TRUE
+      smooth_scroll: TRUE
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, fig.path = "figs_control/")
+
+options(scipen = 999)
+```
+
+This document provides the code for the analyses reported in:
+
+[Cosme et al. (Preprint) Testing the adolescent social reorientation model using hierarchical growth curve modeling with parcellated fMRI data](https://psyarxiv.com/8eyf5/)
+
+This script reproduces the analyses reported in the main manuscript using different sets of parcels categorized as control regions. Specifically, parcels from the original set of control regions that overlapped with the Yeo et al. (2011) 7-network sensorimotor or frontoparietal maps were categorized as control regions.
+
+# load packages
+```{r}
+library(tidyverse)
+library(knitr)
+library(lme4)
+library(lmerTest)
+```
+
+# define color palettes and labels
+```{r}
+pal_self_other = c("#FFA90A", "#247BA0")
+pal_social_academic = c("#63647E", "#F25F5C")
+pal_wave = c("#693668", "#A74482", "#F84AA7")
+pal_label = c("#47A8BD", "#DBC057", "#FF3366")
+pal_gender = c("#70c1b3","#247BA0")
+
+parcel_labeller = labeller(label = c('social' = 'social parcels', 'other' = 'control parcels', 'self' = 'self parcels'),
+                           domain = c('social' = 'social domain', 'academic' = 'academic domain'),
+                           wave = c("t1" = "wave 1", "t2" = "wave 2", "t3" = "wave 3"))
+
+label_df = expand.grid(label = c("social", "self", "other"),
+              target = c("self", "other"),
+              domain = c("social", "academic"),
+              age = 13,
+              expected_avg = 1,
+              expected_diff = 1)
+
+dcbw = theme_classic() +
+  theme(text = element_text(size = 14, family = "Futura Medium", color = "black"),
+        panel.background = element_blank(),
+        plot.background = element_blank(),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 14),
+        legend.background = element_rect(fill = NA, color = NA),
+        axis.line = element_line(color = "black"),
+        axis.text = element_text(color = "black"),
+        panel.grid.minor = element_blank())
+```
+
+# prep data
+```{r}
+# demographics
+demo = read.csv("../data/SFIC_age.pds.gender.csv") %>%
+  rename("subjectID" = SID,
+         "wave" = wavenum,
+         "gender" = Gender) %>%
+  mutate(subjectID = sprintf("s%03d", subjectID),
+         wave = paste0("t", wave),
+         age_c = age - 13,
+         age_c2 = age_c^2,
+         pdss_c = pdss - 3,
+         pdss_c2 = pdss_c^2)
+
+# load MRI data and merge
+# define parcels
+self_parcels = c(5, 17, 28, 47, 52, 66, 116, 147, 152, 156, 184, 198, 207, 225, 249, 292, 309, 354, 380)
+social_parcels = c(18, 23, 29, 49, 54, 59, 62, 63, 67, 76, 111, 114, 139, 143, 146, 150, 178, 179, 189, 203, 212, 224, 229, 236, 238, 239, 245, 250, 259, 266, 271, 301, 305, 310, 322, 324, 328, 331, 333, 342, 343, 350, 374, 391)
+control_yeo_sm_parcels = c(1, 8, 12, 14, 21, 24, 35, 37, 42, 51, 53, 64, 75, 79, 82, 87, 88, 89, 91, 106, 107, 112, 120, 121, 129, 131, 132, 137, 140, 148, 151, 158, 164, 166, 168, 170, 182, 183, 188, 191, 193, 204, 210, 222, 226, 228, 231, 242, 243, 256, 260, 264, 265, 280, 285, 287, 288, 291, 299, 320, 325, 327, 338, 339, 340, 341, 353, 357, 365, 366, 369, 370, 372, 376, 386, 387, 390)
+control_yeo_fp_parcels = c(3, 4, 9, 14, 19, 22, 26, 30, 34, 36, 41, 42, 45, 50, 55, 60, 61, 68, 70, 72, 80, 81, 83, 84, 86, 92, 93, 94, 95, 97, 105, 108, 118, 122, 123, 124, 126, 128, 130, 133, 135, 137, 141, 148, 153, 154, 155, 161, 165, 169, 175, 176, 186, 188, 192, 197, 199, 200, 201, 205, 208, 211, 213, 214, 220, 231, 234, 237, 242, 244, 246, 253, 254, 257, 262, 267, 268, 273, 286, 289, 299, 306, 308, 311, 313, 314, 315, 317, 318, 319, 325, 332, 336, 341, 342, 346, 353, 357, 366, 369, 383, 384, 387, 388, 393, 395, 397)
+
+# mri exclusions
+mri_exclusions = c('s002_t1', 's004_t1', 's008_t1', 's011_t1', 's017_t1', 
+                   's026_t1', 's033_t2', 's034_t1', 's041_t1', 's044_t1', 
+                   's047_t1', 's051_t1', 's054_t1', 's057_t1', 's059_t1', 
+                   's061_t1', 's063_t1', 's070_t2', 's074_t1', 's074_t2', 
+                   's078_t1', 's084_t1', 's090_t2', 's090_t3', 's094_t1', 
+                   's094_t2', 's096_t1') 
+
+# load and tidy parcel data
+parcellations_sm = read_csv('../data/fxParcellations.csv') %>%
+  mutate(label = ifelse(parcellation %in% self_parcels, 'self',
+                 ifelse(parcellation %in% social_parcels, 'social', 
+                 ifelse(parcellation %in% control_yeo_sm_parcels, 'other', 'remove')))) %>%
+  filter(!label == "remove") %>%
+  mutate(wave = paste0("t", as.numeric(c(`10` = 1, `13` = 2, `16` = 3)[as.character(age)]))) %>%
+  select(-age) %>%
+  unite(sub_wave, c(subjectID, wave), remove = FALSE) %>%
+  group_by(parcellation) %>%
+  mutate(inclusion = ifelse(sub_wave %in% mri_exclusions, "excluded from MRI", "completed MRI"),
+         beta = ifelse(sub_wave %in% mri_exclusions, NA, beta),
+         sd = ifelse(sub_wave %in% mri_exclusions, NA, sd),
+         beta_std = scale(beta, center = FALSE, scale = TRUE),
+         mean_beta_std = mean(beta_std, na.rm = TRUE)) %>%
+    select(-sub_wave) %>%
+  ungroup()
+
+parcellations_fp = read_csv('../data/fxParcellations.csv') %>%
+  mutate(label = ifelse(parcellation %in% self_parcels, 'self',
+                 ifelse(parcellation %in% social_parcels, 'social', 
+                 ifelse(parcellation %in% control_yeo_fp_parcels, 'other', 'remove')))) %>%
+  filter(!label == "remove") %>%
+  mutate(wave = paste0("t", as.numeric(c(`10` = 1, `13` = 2, `16` = 3)[as.character(age)]))) %>%
+  select(-age) %>%
+  unite(sub_wave, c(subjectID, wave), remove = FALSE) %>%
+  group_by(parcellation) %>%
+  mutate(inclusion = ifelse(sub_wave %in% mri_exclusions, "excluded from MRI", "completed MRI"),
+         beta = ifelse(sub_wave %in% mri_exclusions, NA, beta),
+         sd = ifelse(sub_wave %in% mri_exclusions, NA, sd),
+         beta_std = scale(beta, center = FALSE, scale = TRUE),
+         mean_beta_std = mean(beta_std, na.rm = TRUE)) %>%
+    select(-sub_wave) %>%
+  ungroup()
+
+# exclude parameter estimates 3 SD from the mean
+parcellations_ex_sm = parcellations_sm %>%
+  mutate(beta_std = ifelse(beta_std > mean_beta_std + 3 | beta_std < mean_beta_std - 3, NA, beta_std))
+
+parcellations_ex_fp = parcellations_fp %>%
+  mutate(beta_std = ifelse(beta_std > mean_beta_std + 3 | beta_std < mean_beta_std - 3, NA, beta_std))
+
+# merge data
+merged_sm = parcellations_sm %>%
+  full_join(., demo, by = c("subjectID", "wave")) %>%
+  mutate(inclusion = ifelse(is.na(inclusion), "didn't complete MRI", inclusion)) %>%
+  filter(!(subjectID == "s086" & wave == "t3")) %>% #no MRI, task, or self-report data was collected
+  filter(!is.na(beta)) %>%
+  select(subjectID, wave, age, age_c, age_c2, target, domain, parcellation, label, beta, beta_std) %>%
+  na.omit() %>%
+  mutate(target = ifelse(target == "self", .5, -.5),
+         domain = ifelse(domain == "social", .5, -.5))
+
+merged_fp = parcellations_fp %>%
+  full_join(., demo, by = c("subjectID", "wave")) %>%
+  mutate(inclusion = ifelse(is.na(inclusion), "didn't complete MRI", inclusion)) %>%
+  filter(!(subjectID == "s086" & wave == "t3")) %>% #no MRI, task, or self-report data was collected
+  filter(!is.na(beta)) %>%
+  select(subjectID, wave, age, age_c, age_c2, target, domain, parcellation, label, beta, beta_std) %>%
+  na.omit() %>%
+  mutate(target = ifelse(target == "self", .5, -.5),
+         domain = ifelse(domain == "social", .5, -.5))
+```
+
+# sensorimotor regions
+## run models {.tabset}
+### domain x age
+```{r}
+# specify model
+model_domain_equation = formula(beta_std ~ 1 + age_c*domain*label +
+                                  age_c2*domain*label +
+                                  (1 + age_c*domain | subjectID) +
+                                  (1 + age_c*domain + age_c2*domain | parcellation))
+
+model_domain_formula = lFormula(model_domain_equation, data = merged_sm)
+
+# calculate max number of iterations
+model_domain_numFx = length(dimnames(model_domain_formula$X)[[2]])
+
+model_domain_numRx = sum(as.numeric(lapply(model_domain_formula$reTrms$cnms, function(x) {
+  l <- length(x)
+  (l*(l - 1)) / 2 + l
+})))
+
+model_domain_maxfun = 10*(model_domain_numFx + model_domain_numRx + 1)^2
+
+# run or load the model
+if (file.exists("../data/model_domain_yeo_sm.RDS")) {
+  model_domain = readRDS("../data/model_domain_yeo_sm.RDS")
+} else {
+  model_domain = lmer(model_domain_equation, data = merged_sm, REML = F, #Use ML since we want to compare random effects
+                      verbose = 2,
+                      control = lmerControl(optCtrl = list(maxfun = model_domain_maxfun), optimizer = "bobyqa", calc.derivs = FALSE))
+  saveRDS(model_domain, "../data/model_domain_yeo_sm.RDS")
+}
+```
+
+### domain x target x age
+```{r}
+# specify model
+model_target_equation = formula(beta_std ~ 1 + age_c*target*domain*label +
+                                  age_c2*target*domain*label +
+                                  (1 + age_c*target*domain | subjectID) +
+                                  (1 + age_c*target*domain + age_c2*target*domain | parcellation))
+
+# calculate max number of iterations
+model_target_formula = lFormula(model_target_equation, data = merged_sm)
+
+model_target_numFx = length(dimnames(model_target_formula$X)[[2]])
+
+model_target_numRx = sum(as.numeric(lapply(model_target_formula$reTrms$cnms, function(x) {
+  l <- length(x)
+  (l*(l - 1)) / 2 + l
+})))
+
+model_target_maxfun = 10*(model_target_numFx + model_target_numRx + 1)^2
+
+# run or load the model
+if (file.exists("../data/model_target_yeo_sm.RDS")) {
+  model_target = readRDS("../data/model_target_yeo_sm.RDS")
+} else {
+  model_target = lmer(model_target_equation, data = merged_sm, REML = F, #Use ML since we want to compare random effects
+                      verbose = 2,
+                      control = lmerControl(optCtrl = list(maxfun = model_target_maxfun), optimizer = "bobyqa", calc.derivs = FALSE))
+  saveRDS(model_target, "../data/model_target_yeo_sm.RDS")
+}
+```
+
+## compare models
+```{r}
+anova(model_domain, model_target) %>%
+  as.data.frame() %>%
+  select(npar, AIC, Chisq, Df, `Pr(>Chisq)`) %>%
+  rownames_to_column() %>%
+  rename("model" = rowname,
+         "model df" = Df,
+         "X2" = Chisq,
+         "X2 df" = Df,
+         "p" = `Pr(>Chisq)`) %>%
+  mutate(AIC = round(AIC, 2),
+         X2 = round(X2, 2),
+         p = round(p, 3),
+         p = ifelse(p == 0, "< .001", gsub("0.(.*)", ".\\1", p))) %>%
+  mutate_if(is.numeric, funs(ifelse(is.na(.), "--", .))) %>%
+  mutate_if(is.character, funs(ifelse(is.na(.), "--", .))) %>%
+  kable(format = "pandoc")
+```
+
+## summarize best fitting model
+```{r}
+model_target %>%
+  broom.mixed::tidy(effects = c("ran_pars", "fixed"), conf.int = TRUE) %>%
+  filter(effect == "fixed") %>%
+  select(-group) %>%
+  rename("b" = estimate,
+         "SE" = std.error,
+         "t" = statistic,
+         "p" = p.value) %>%
+  mutate(p = round(p, 3),
+         p = ifelse(p == 0, "< .001", gsub("0.(.*)", ".\\1", sprintf("%.3f", p))),
+         term = gsub("\\(Intercept\\)", "Intercept (age 13, label (control))", term),
+         term = gsub("target", "Target", term),
+         term = gsub("domain", "Domain", term),
+         term = gsub("labelself", "Label (self)", term),
+         term = gsub("labelsocial", "Label (social)", term),
+         term = gsub("age_c", "Age", term),
+         term = gsub(":", " x ", term),
+         term = gsub("sd__", "", term),
+         term = gsub("Observation", "observation", term),
+         effect = gsub("ran_pars", "random", effect),
+         `b [95% CI]` = ifelse(effect == "fixed", sprintf("%.3f [%.3f, %.3f]", b, conf.low, conf.high), "--")) %>%
+  mutate_if(is.numeric, round, 3) %>%
+  mutate_if(is.numeric, funs(ifelse(is.na(.), "--", .))) %>%
+  mutate_if(is.character, funs(ifelse(is.na(.), "--", .))) %>%
+  select(term, `b [95% CI]`, SE, t, df, p) %>%
+  kable(format = "pandoc")
+  
+# summarize random effects
+print(VarCorr(model_target), comp = c("Variance","Std.Dev."), digits = 3)
+```
+
+## simple slopes {.tabset}
+Estimate simple slopes to test interactions at specific levels
+
+### run models
+```{r}
+# self social > academic
+self_social = emmeans::emtrends(model_target, pairwise ~ domain,
+                  var = "age_c", at = list(target =.5, label="social"),
+                  lmerTest.limit = 188577)$contrasts %>%
+  data.frame() %>%
+  mutate(contrast = "self social > academic",
+         parcel = "social",
+         age_effect = "linear") %>%
+  bind_rows(emmeans::emtrends(model_target, pairwise ~ domain,
+                  var = "age_c2", at = list(target =.5, label="social"),
+                  lmerTest.limit = 188577)$contrasts %>%
+  data.frame() %>%
+  mutate(contrast = "self social > academic",
+         parcel = "social",
+         age_effect = "quadratic"))
+
+# social self > other
+social_self = emmeans::emtrends(model_target, pairwise ~ target,
+                  var = "age_c", at = list(domain =.5, label="self"),
+                  lmerTest.limit = 188577)$contrasts %>%
+  data.frame() %>%
+  mutate(contrast = "social self > other",
+         parcel = "self",
+         age_effect = "linear") %>%
+  bind_rows(emmeans::emtrends(model_target, pairwise ~ target,
+                  var = "age_c2", at = list(domain =.5, label="self"),
+                  lmerTest.limit = 188577)$contrasts %>%
+  data.frame() %>%
+  mutate(contrast = "social self > other",
+         parcel = "self",
+         age_effect = "quadratic"))
+```
+
+### make table
+```{r}
+social_self %>%
+  bind_rows(self_social) %>%
+  select(contrast, parcel, age_effect, estimate, SE, df, t.ratio, p.value) %>%
+  rename("b" = estimate,
+         "t" = t.ratio,
+         "p" = p.value) %>%
+  mutate(b = round(b, 3) * -1, #flip signs for it's .5 - (-.5)
+         SE = round(SE, 3),
+         df = round(df, 2),
+         t = abs(round(t, 2)),
+         p = round(p, 3)) %>%
+  kable(format = "pandoc")
+```
+
+## visualize fitted models {.tabset}
+Visualize the developmental trajectory using the fitted values from the domain x target x age model
+
+```{r}
+reForm = as.formula("~(1 + age_c*target*domain + age_c2*target*domain | parcellation)")
+
+neuro_plot_data = with(merged_sm, 
+                    expand.grid(target = unique(target), 
+                                domain = unique(domain),
+                                parcellation = unique(parcellation),
+                                age = unique(age),
+                                stringsAsFactors = F)) %>%
+  mutate(label = ifelse(parcellation %in% self_parcels, 'self',
+                 ifelse(parcellation %in% social_parcels, 'social', 'other')),
+         age_c = age - 13, 
+         age_c2 = age_c^2, 
+         subjectID = NA)
+neuro_plot_data$expected = predict(model_target, newdata = neuro_plot_data, re.form = reForm)
+neuro_plot_data$expected_mean = predict(model_target, newdata = neuro_plot_data, re.form = NA)
+
+neuro_plot_data = neuro_plot_data %>%
+  mutate(target = factor(target, levels = c(-.5, .5), labels = c("other", "self")),
+         domain = factor(domain, levels = c(-.5, .5), labels = c("academic", "social")))
+```
+
+### hypothesis 0
+```{r h0_fitted, fig.width=12, fig.height=5}
+domain_parc_plot = neuro_plot_data %>%
+  distinct(parcellation, target, domain, age, label, .keep_all = T) %>%
+  group_by(subjectID, age, label, domain, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  ggplot(aes(x = age, y = expected_avg, color = domain)) + 
+  geom_smooth(aes(group = interaction(parcellation, domain), size = label), method = "lm", formula = y ~ poly(x, 2), se = FALSE, show.legend = FALSE) +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), size = 1.25, se = FALSE) +
+  scale_color_manual(name = "", values = pal_social_academic) +
+  scale_size_manual(values = c(.05, .1, .1)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  scale_y_continuous(breaks = c(-1, 0, 1)) + 
+  coord_cartesian(ylim = c(-1.2, 1.2)) +
+  facet_grid(~label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n") + 
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+target_parc_plot = neuro_plot_data %>%
+  distinct(parcellation, target, domain, age, label, .keep_all = T) %>%
+  group_by(subjectID, age, label, target, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  ggplot(aes(x = age, y = expected_avg, color = target)) + 
+  geom_smooth(aes(group = interaction(parcellation, target), size = label), method = "lm", formula = y ~ poly(x, 2), se = FALSE, show.legend = FALSE) +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), size = 1.25, se = FALSE) +
+  scale_color_manual(values = pal_self_other) +
+  scale_size_manual(values = c(.05, .1, .1)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  scale_y_continuous(breaks = c(-1, 0, 1)) + 
+  coord_cartesian(ylim = c(-1.2, 1.2)) +
+  facet_grid(~label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n", color = "") + 
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+(h0_fitted = cowplot::plot_grid(domain_parc_plot, target_parc_plot,
+                                labels = c('A', 'B'), ncol = 2,
+                                rel_widths = c(1, 1)))
+```
+
+### hypothesis 1
+```{r h1_fitted, fig.width=12, fig.height=5}
+domain_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, domain, parcellation) %>%
+  mutate(expected_avg = mean(expected_mean, na.rm = TRUE)) %>%
+  distinct(parcellation, target, domain, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_avg, color = domain)) +
+  geom_rect(data = subset(label_df, label == "social"), aes(fill = label), color = NA, alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = .2, se = FALSE, size = 1.25) + 
+  scale_y_continuous(breaks = seq(-.2, .45, .2)) +
+  coord_cartesian(ylim = c(-.3, .45)) +
+  scale_color_manual(values = pal_social_academic) +
+  scale_fill_manual(values = "lightgrey") +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+soc_acad_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, domain, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  select(subjectID, age, label, domain, expected_avg) %>%
+  unique() %>%
+  spread(domain, expected_avg) %>%
+  mutate(expected_diff = social - academic) %>%
+  distinct(parcellation, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_diff)) +
+  geom_rect(data = subset(label_df, label == "social"), aes(fill = label), alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
+  geom_smooth(aes(group = parcellation, size = label), method = "lm", formula = y ~ poly(x, 2),
+              se = FALSE, color = "grey50") +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
+              se = FALSE, color = pal_social_academic[2], size = 1.5) + 
+  scale_fill_manual(values = "lightgrey") +
+  scale_size_manual(values = c(.03, .1, .1)) +
+  scale_y_continuous(breaks = seq(-.2, .45, .2)) +
+  coord_cartesian(ylim = c(-.3, .45)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = "none")
+
+(h1_fitted = cowplot::plot_grid(domain_plot, soc_acad_plot,
+                                labels = c('A', 'B'), ncol = 2,
+                                rel_widths = c(1, 1)))
+```
+
+### hypothesis 2
+```{r h2_fitted, fig.width=12, fig.height=5}
+target_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, target, parcellation) %>%
+  mutate(expected_avg = mean(expected_mean, na.rm = TRUE)) %>%
+  distinct(parcellation, target, target, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_avg, color = target)) +
+  geom_rect(data = subset(label_df, label == "self"), aes(fill = label), color = NA, alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = .2, se = FALSE, size = 1.25) + 
+  scale_y_continuous(breaks = seq(-.2, .3, .1)) +
+  coord_cartesian(ylim = c(-.2, .35)) +
+  scale_color_manual(values = pal_self_other) +
+  scale_fill_manual(values = "lightgrey") +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+self_other_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, target, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  select(subjectID, age, label, target, expected_avg) %>%
+  unique() %>%
+  spread(target, expected_avg) %>%
+  mutate(expected_diff = self - other) %>%
+  distinct(parcellation, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_diff)) +
+  geom_rect(data = subset(label_df, label == "self"), aes(fill = label), alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
+  geom_smooth(aes(group = parcellation, size = label), method = "lm", formula = y ~ poly(x, 2),
+              se = FALSE, color = "grey50") +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
+              se = FALSE, color = pal_self_other[2], size = 1.5) + 
+  scale_fill_manual(values = "lightgrey") +
+  scale_size_manual(values = c(.03, .1, .1)) +
+  scale_y_continuous(breaks = seq(-.2, .3, .1)) +
+  coord_cartesian(ylim = c(-.2, .35)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = "none")
+
+(h2_fitted = cowplot::plot_grid(target_plot, self_other_plot,
+                                labels = c('A', 'B'), ncol = 2,
+                                rel_widths = c(1, 1)))
+```
+
+### hypothesis 3
+```{r h3_fitted, fig.width=15, fig.height=5}
+int_plot = neuro_plot_data %>%
+  distinct(parcellation, target, domain, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_mean, group = interaction(target, domain), color = domain, linetype = target)) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = 1, se = FALSE, size = 1.25) + 
+  scale_y_continuous(breaks = c(-.4, -.2, 0, .2, .4)) +
+  coord_cartesian(ylim = c(-.4, .55)) +
+  scale_color_manual(values = pal_social_academic) +
+  scale_linetype_manual(name = "", values = c("dotted", "solid")) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '', linetype = '') +
+  guides(linetype = guide_legend(override.aes = list(color = "black"))) +
+  dcbw +
+  theme(legend.position = c(.75, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(.5, "cm"),
+        legend.direction = "vertical",
+        legend.box = "horizontal")
+
+soc_acad_int_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, target, domain, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  select(subjectID, age, label, target, domain, expected_avg) %>%
+  unique() %>%
+  spread(domain, expected_avg) %>%
+  mutate(expected_diff = social - academic) %>%
+  distinct(parcellation, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_diff, color = target)) +
+  geom_smooth(aes(group = interaction(parcellation, target), size = label),
+              method = "lm", formula = y ~ poly(x, 2), se = FALSE, show.legend = FALSE) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
+              se = FALSE, size = 1.5) + 
+  scale_color_manual(values = pal_self_other) +
+  scale_size_manual(values = c(.03, .1, .1)) +
+  scale_y_continuous(breaks = c(-.4, -.2, 0, .2, .4)) +
+  coord_cartesian(ylim = c(-.4, .55)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+
+self_other_int_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, domain, target, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  select(subjectID, age, label, domain, target, expected_avg) %>%
+  unique() %>%
+  spread(target, expected_avg) %>%
+  mutate(expected_diff = self - other) %>%
+  distinct(parcellation, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_diff, color = domain)) +
+  geom_smooth(aes(group = interaction(parcellation, domain), size = label),
+              method = "lm", formula = y ~ poly(x, 2), se = FALSE, show.legend = FALSE) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
+              se = FALSE, size = 1.5) + 
+  scale_color_manual(values = pal_social_academic) +
+  scale_size_manual(values = c(.03, .1, .1)) +
+  scale_y_continuous(breaks = c(-.4, -.2, 0, .2, .4)) +
+  coord_cartesian(ylim = c(-.4, .55)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+(h3_fitted = cowplot::plot_grid(int_plot, soc_acad_int_plot, self_other_int_plot,
+                       labels = c('A', 'B', 'C'), ncol = 3))
+```
+
+
+# frontoparietal regions
+## run models {.tabset}
+Estimate full models
+
+### domain x age
+```{r}
+# specify model
+model_domain_equation = formula(beta_std ~ 1 + age_c*domain*label +
+                                  age_c2*domain*label +
+                                  (1 + age_c*domain | subjectID) +
+                                  (1 + age_c*domain + age_c2*domain | parcellation))
+
+model_domain_formula = lFormula(model_domain_equation, data = merged_fp)
+
+# calculate max number of iterations
+model_domain_numFx = length(dimnames(model_domain_formula$X)[[2]])
+
+model_domain_numRx = sum(as.numeric(lapply(model_domain_formula$reTrms$cnms, function(x) {
+  l <- length(x)
+  (l*(l - 1)) / 2 + l
+})))
+
+model_domain_maxfun = 10*(model_domain_numFx + model_domain_numRx + 1)^2
+
+# run or load the model
+if (file.exists("../data/model_domain_yeo_fp.RDS")) {
+  model_domain = readRDS("../data/model_domain_yeo_fp.RDS")
+} else {
+  model_domain = lmer(model_domain_equation, data = merged_fp, REML = F, #Use ML since we want to compare random effects
+                      verbose = 2,
+                      control = lmerControl(optCtrl = list(maxfun = model_domain_maxfun), optimizer = "bobyqa", calc.derivs = FALSE))
+  saveRDS(model_domain, "../data/model_domain_yeo_fp.RDS")
+}
+```
+
+### domain x target x age
+```{r}
+# specify model
+model_target_equation = formula(beta_std ~ 1 + age_c*target*domain*label +
+                                  age_c2*target*domain*label +
+                                  (1 + age_c*target*domain | subjectID) +
+                                  (1 + age_c*target*domain + age_c2*target*domain | parcellation))
+
+# calculate max number of iterations
+model_target_formula = lFormula(model_target_equation, data = merged_fp)
+
+model_target_numFx = length(dimnames(model_target_formula$X)[[2]])
+
+model_target_numRx = sum(as.numeric(lapply(model_target_formula$reTrms$cnms, function(x) {
+  l <- length(x)
+  (l*(l - 1)) / 2 + l
+})))
+
+model_target_maxfun = 10*(model_target_numFx + model_target_numRx + 1)^2
+
+# run or load the model
+if (file.exists("../data/model_target_yeo_fp.RDS")) {
+  model_target = readRDS("../data/model_target_yeo_fp.RDS")
+} else {
+  model_target = lmer(model_target_equation, data = merged_fp, REML = F, #Use ML since we want to compare random effects
+                      verbose = 2,
+                      control = lmerControl(optCtrl = list(maxfun = model_target_maxfun), optimizer = "bobyqa", calc.derivs = FALSE))
+  saveRDS(model_target, "../data/model_target_yeo_fp.RDS")
+}
+```
+
+## compare models
+```{r}
+anova(model_domain, model_target) %>%
+  as.data.frame() %>%
+  select(npar, AIC, Chisq, Df, `Pr(>Chisq)`) %>%
+  rownames_to_column() %>%
+  rename("model" = rowname,
+         "model df" = Df,
+         "X2" = Chisq,
+         "X2 df" = Df,
+         "p" = `Pr(>Chisq)`) %>%
+  mutate(AIC = round(AIC, 2),
+         X2 = round(X2, 2),
+         p = round(p, 3),
+         p = ifelse(p == 0, "< .001", gsub("0.(.*)", ".\\1", p))) %>%
+  mutate_if(is.numeric, funs(ifelse(is.na(.), "--", .))) %>%
+  mutate_if(is.character, funs(ifelse(is.na(.), "--", .))) %>%
+  kable(format = "pandoc")
+```
+
+## summarize best fitting model
+```{r}
+model_target %>%
+  broom.mixed::tidy(effects = c("ran_pars", "fixed"), conf.int = TRUE) %>%
+  filter(effect == "fixed") %>%
+  select(-group) %>%
+  rename("b" = estimate,
+         "SE" = std.error,
+         "t" = statistic,
+         "p" = p.value) %>%
+  mutate(p = round(p, 3),
+         p = ifelse(p == 0, "< .001", gsub("0.(.*)", ".\\1", sprintf("%.3f", p))),
+         term = gsub("\\(Intercept\\)", "Intercept (age 13, label (control))", term),
+         term = gsub("target", "Target", term),
+         term = gsub("domain", "Domain", term),
+         term = gsub("labelself", "Label (self)", term),
+         term = gsub("labelsocial", "Label (social)", term),
+         term = gsub("age_c", "Age", term),
+         term = gsub(":", " x ", term),
+         term = gsub("sd__", "", term),
+         term = gsub("Observation", "observation", term),
+         effect = gsub("ran_pars", "random", effect),
+         `b [95% CI]` = ifelse(effect == "fixed", sprintf("%.3f [%.3f, %.3f]", b, conf.low, conf.high), "--")) %>%
+  mutate_if(is.numeric, round, 3) %>%
+  mutate_if(is.numeric, funs(ifelse(is.na(.), "--", .))) %>%
+  mutate_if(is.character, funs(ifelse(is.na(.), "--", .))) %>%
+  select(term, `b [95% CI]`, SE, t, df, p) %>%
+  kable(format = "pandoc")
+  
+# summarize random effects
+print(VarCorr(model_target), comp = c("Variance","Std.Dev."), digits = 3)
+```
+
+## simple slopes {.tabset}
+Estimate simple slopes to test interactions at specific levels
+
+### run models
+```{r}
+# self social > academic
+self_social = emmeans::emtrends(model_target, pairwise ~ domain,
+                  var = "age_c", at = list(target =.5, label="social"),
+                  lmerTest.limit = 188577)$contrasts %>%
+  data.frame() %>%
+  mutate(contrast = "self social > academic",
+         parcel = "social",
+         age_effect = "linear") %>%
+  bind_rows(emmeans::emtrends(model_target, pairwise ~ domain,
+                  var = "age_c2", at = list(target =.5, label="social"),
+                  lmerTest.limit = 188577)$contrasts %>%
+  data.frame() %>%
+  mutate(contrast = "self social > academic",
+         parcel = "social",
+         age_effect = "quadratic"))
+
+# social self > other
+social_self = emmeans::emtrends(model_target, pairwise ~ target,
+                  var = "age_c", at = list(domain =.5, label="self"),
+                  lmerTest.limit = 188577)$contrasts %>%
+  data.frame() %>%
+  mutate(contrast = "social self > other",
+         parcel = "self",
+         age_effect = "linear") %>%
+  bind_rows(emmeans::emtrends(model_target, pairwise ~ target,
+                  var = "age_c2", at = list(domain =.5, label="self"),
+                  lmerTest.limit = 188577)$contrasts %>%
+  data.frame() %>%
+  mutate(contrast = "social self > other",
+         parcel = "self",
+         age_effect = "quadratic"))
+```
+
+### make table
+```{r}
+social_self %>%
+  bind_rows(self_social) %>%
+  select(contrast, parcel, age_effect, estimate, SE, df, t.ratio, p.value) %>%
+  rename("b" = estimate,
+         "t" = t.ratio,
+         "p" = p.value) %>%
+  mutate(b = round(b, 3) * -1, #flip signs for it's .5 - (-.5)
+         SE = round(SE, 3),
+         df = round(df, 2),
+         t = abs(round(t, 2)),
+         p = round(p, 3)) %>%
+  kable(format = "pandoc")
+```
+
+## visualize fitted models {.tabset}
+Visualize the developmental trajectory using the fitted values from the domain x target x age model
+
+```{r}
+reForm = as.formula("~(1 + age_c*target*domain + age_c2*target*domain | parcellation)")
+
+neuro_plot_data = with(merged_fp, 
+                    expand.grid(target = unique(target), 
+                                domain = unique(domain),
+                                parcellation = unique(parcellation),
+                                age = unique(age),
+                                stringsAsFactors = F)) %>%
+  mutate(label = ifelse(parcellation %in% self_parcels, 'self',
+                 ifelse(parcellation %in% social_parcels, 'social', 'other')),
+         age_c = age - 13, 
+         age_c2 = age_c^2, 
+         subjectID = NA)
+neuro_plot_data$expected = predict(model_target, newdata = neuro_plot_data, re.form = reForm)
+neuro_plot_data$expected_mean = predict(model_target, newdata = neuro_plot_data, re.form = NA)
+
+neuro_plot_data = neuro_plot_data %>%
+  mutate(target = factor(target, levels = c(-.5, .5), labels = c("other", "self")),
+         domain = factor(domain, levels = c(-.5, .5), labels = c("academic", "social")))
+```
+
+### hypothesis 0
+```{r h0_fitted_fp, fig.width=12, fig.height=5}
+domain_parc_plot = neuro_plot_data %>%
+  distinct(parcellation, target, domain, age, label, .keep_all = T) %>%
+  group_by(subjectID, age, label, domain, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  ggplot(aes(x = age, y = expected_avg, color = domain)) + 
+  geom_smooth(aes(group = interaction(parcellation, domain), size = label), method = "lm", formula = y ~ poly(x, 2), se = FALSE, show.legend = FALSE) +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), size = 1.25, se = FALSE) +
+  scale_color_manual(name = "", values = pal_social_academic) +
+  scale_size_manual(values = c(.05, .1, .1)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  scale_y_continuous(breaks = c(-1, 0, 1)) + 
+  coord_cartesian(ylim = c(-1.2, 1.2)) +
+  facet_grid(~label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n") + 
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+target_parc_plot = neuro_plot_data %>%
+  distinct(parcellation, target, domain, age, label, .keep_all = T) %>%
+  group_by(subjectID, age, label, target, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  ggplot(aes(x = age, y = expected_avg, color = target)) + 
+  geom_smooth(aes(group = interaction(parcellation, target), size = label), method = "lm", formula = y ~ poly(x, 2), se = FALSE, show.legend = FALSE) +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), size = 1.25, se = FALSE) +
+  scale_color_manual(values = pal_self_other) +
+  scale_size_manual(values = c(.05, .1, .1)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  scale_y_continuous(breaks = c(-1, 0, 1)) + 
+  coord_cartesian(ylim = c(-1.2, 1.2)) +
+  facet_grid(~label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n", color = "") + 
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+(h0_fitted = cowplot::plot_grid(domain_parc_plot, target_parc_plot,
+                                labels = c('A', 'B'), ncol = 2,
+                                rel_widths = c(1, 1)))
+```
+
+### hypothesis 1
+```{r h1_fitted_fp, fig.width=12, fig.height=5}
+domain_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, domain, parcellation) %>%
+  mutate(expected_avg = mean(expected_mean, na.rm = TRUE)) %>%
+  distinct(parcellation, target, domain, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_avg, color = domain)) +
+  geom_rect(data = subset(label_df, label == "social"), aes(fill = label), color = NA, alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = .2, se = FALSE, size = 1.25) + 
+  scale_y_continuous(breaks = seq(-.2, .45, .2)) +
+  coord_cartesian(ylim = c(-.3, .45)) +
+  scale_color_manual(values = pal_social_academic) +
+  scale_fill_manual(values = "lightgrey") +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+soc_acad_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, domain, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  select(subjectID, age, label, domain, expected_avg) %>%
+  unique() %>%
+  spread(domain, expected_avg) %>%
+  mutate(expected_diff = social - academic) %>%
+  distinct(parcellation, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_diff)) +
+  geom_rect(data = subset(label_df, label == "social"), aes(fill = label), alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
+  geom_smooth(aes(group = parcellation, size = label), method = "lm", formula = y ~ poly(x, 2),
+              se = FALSE, color = "grey50") +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
+              se = FALSE, color = pal_social_academic[2], size = 1.5) + 
+  scale_fill_manual(values = "lightgrey") +
+  scale_size_manual(values = c(.03, .1, .1)) +
+  scale_y_continuous(breaks = seq(-.2, .45, .2)) +
+  coord_cartesian(ylim = c(-.3, .45)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = "none")
+
+(h1_fitted = cowplot::plot_grid(domain_plot, soc_acad_plot,
+                                labels = c('A', 'B'), ncol = 2,
+                                rel_widths = c(1, 1)))
+```
+
+### hypothesis 2
+```{r h2_fitted_fp, fig.width=12, fig.height=5}
+target_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, target, parcellation) %>%
+  mutate(expected_avg = mean(expected_mean, na.rm = TRUE)) %>%
+  distinct(parcellation, target, target, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_avg, color = target)) +
+  geom_rect(data = subset(label_df, label == "self"), aes(fill = label), color = NA, alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = .2, se = FALSE, size = 1.25) + 
+  scale_y_continuous(breaks = seq(-.2, .3, .1)) +
+  coord_cartesian(ylim = c(-.2, .35)) +
+  scale_color_manual(values = pal_self_other) +
+  scale_fill_manual(values = "lightgrey") +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+self_other_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, target, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  select(subjectID, age, label, target, expected_avg) %>%
+  unique() %>%
+  spread(target, expected_avg) %>%
+  mutate(expected_diff = self - other) %>%
+  distinct(parcellation, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_diff)) +
+  geom_rect(data = subset(label_df, label == "self"), aes(fill = label), alpha = .07,
+            xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf, show.legend = FALSE) +
+  geom_smooth(aes(group = parcellation, size = label), method = "lm", formula = y ~ poly(x, 2),
+              se = FALSE, color = "grey50") +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
+              se = FALSE, color = pal_self_other[2], size = 1.5) + 
+  scale_fill_manual(values = "lightgrey") +
+  scale_size_manual(values = c(.03, .1, .1)) +
+  scale_y_continuous(breaks = seq(-.2, .3, .1)) +
+  coord_cartesian(ylim = c(-.2, .35)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = "none")
+
+(h2_fitted = cowplot::plot_grid(target_plot, self_other_plot,
+                                labels = c('A', 'B'), ncol = 2,
+                                rel_widths = c(1, 1)))
+```
+
+### hypothesis 3
+```{r h3_fitted_fp, fig.width=15, fig.height=5}
+int_plot = neuro_plot_data %>%
+  distinct(parcellation, target, domain, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_mean, group = interaction(target, domain), color = domain, linetype = target)) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), alpha = 1, se = FALSE, size = 1.25) + 
+  scale_y_continuous(breaks = c(-.4, -.2, 0, .2, .4)) +
+  coord_cartesian(ylim = c(-.4, .55)) +
+  scale_color_manual(values = pal_social_academic) +
+  scale_linetype_manual(name = "", values = c("dotted", "solid")) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '', linetype = '') +
+  guides(linetype = guide_legend(override.aes = list(color = "black"))) +
+  dcbw +
+  theme(legend.position = c(.75, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(.5, "cm"),
+        legend.direction = "vertical",
+        legend.box = "horizontal")
+
+soc_acad_int_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, target, domain, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  select(subjectID, age, label, target, domain, expected_avg) %>%
+  unique() %>%
+  spread(domain, expected_avg) %>%
+  mutate(expected_diff = social - academic) %>%
+  distinct(parcellation, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_diff, color = target)) +
+  geom_smooth(aes(group = interaction(parcellation, target), size = label),
+              method = "lm", formula = y ~ poly(x, 2), se = FALSE, show.legend = FALSE) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
+              se = FALSE, size = 1.5) + 
+  scale_color_manual(values = pal_self_other) +
+  scale_size_manual(values = c(.03, .1, .1)) +
+  scale_y_continuous(breaks = c(-.4, -.2, 0, .2, .4)) +
+  coord_cartesian(ylim = c(-.4, .55)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+
+self_other_int_plot = neuro_plot_data %>%
+  group_by(subjectID, age, label, domain, target, parcellation) %>%
+  mutate(expected_avg = mean(expected, na.rm = TRUE)) %>%
+  select(subjectID, age, label, domain, target, expected_avg) %>%
+  unique() %>%
+  spread(target, expected_avg) %>%
+  mutate(expected_diff = self - other) %>%
+  distinct(parcellation, age, label, .keep_all = T) %>%
+  ggplot(aes(x = age, y = expected_diff, color = domain)) +
+  geom_smooth(aes(group = interaction(parcellation, domain), size = label),
+              method = "lm", formula = y ~ poly(x, 2), se = FALSE, show.legend = FALSE) +
+  geom_smooth(method = 'lm', formula = y ~ poly(x,2), 
+              se = FALSE, size = 1.5) + 
+  scale_color_manual(values = pal_social_academic) +
+  scale_size_manual(values = c(.03, .1, .1)) +
+  scale_y_continuous(breaks = c(-.4, -.2, 0, .2, .4)) +
+  coord_cartesian(ylim = c(-.4, .55)) +
+  scale_x_continuous(breaks = c(10, 13, 16)) + 
+  facet_grid(~ label, labeller = parcel_labeller) +
+  labs(x = "\nage", y = "mean predicted BOLD signal value\n",  color = '') +
+  dcbw +
+  theme(legend.position = c(.85, .15),
+        legend.spacing.y = unit(.01, 'cm'),
+        legend.margin = unit(0, "cm"))
+
+(h3_fitted = cowplot::plot_grid(int_plot, soc_acad_int_plot, self_other_int_plot,
+                       labels = c('A', 'B', 'C'), ncol = 3))
+```
+
