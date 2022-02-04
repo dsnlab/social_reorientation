@@ -11,7 +11,7 @@ The analyses reported in supplementary material are reported [here](https://dsnl
 
 Sensitivity analyses related to defining the control parcels are reported [here](https://dsnlab.github.io/social_reorientation/analysis/sensitivity_analysis_controls)
 
-Sensitivity analyses estimaing linear fixed effects of age are reported [here](https://dsnlab.github.io/social_reorientation/analysis/sensitivity_analysis_linear)
+Sensitivity analyses estimating linear fixed effects of age are reported [here](https://dsnlab.github.io/social_reorientation/analysis/sensitivity_analysis_linear)
 
 
 ## Directory structure
