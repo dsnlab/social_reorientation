@@ -9,10 +9,14 @@ The analyses reported in the main manuscript are reported [here](https://dsnlab.
 
 The analyses reported in supplementary material are reported [here](https://dsnlab.github.io/social_reorientation/analysis/main_analyses)
 
+Sensitivity analyses related to defining the control parcels are reported [here](https://dsnlab.github.io/social_reorientation/analysis/sensitivity_analysis_controls)
+
+Sensitivity analyses estimaing linear fixed effects of age are reported [here](https://dsnlab.github.io/social_reorientation/analysis/sensitivity_analysis_linear)
+
 
 ## Directory structure
 
-* analysis = Contains the code to reproduce the analyses in the main manuscript and supplementary material
+* analysis = Contains the code to reproduce the analyses in the main manuscript and supplementary material, as well as sensitivity analyses.
 * data = Contains the data used in the analyses in the main manuscript and supplementary material
 * mri = Contains the primary scripts used to preprocess and analyze the MRI data
 * shiny_app = Contains the code to generate the shiny app hosted online at [https://dcosme.shinyapps.io/growth_curves/](https://dcosme.shinyapps.io/growth_curves/)
