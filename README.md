@@ -7,7 +7,7 @@ Code and data to reproduce the analyses reported in the manuscript:
 
 The analyses reported in the main manuscript are reported [here](https://dsnlab.github.io/social_reorientation/analysis/main_analyses)
 
-The analyses reported in supplementary material are reported [here](https://dsnlab.github.io/social_reorientation/analysis/main_analyses)
+The analyses reported in supplementary material are reported [here](https://dsnlab.github.io/social_reorientation/analysis/supplementary_analyses)
 
 Sensitivity analyses related to defining the control parcels are reported [here](https://dsnlab.github.io/social_reorientation/analysis/sensitivity_analysis_controls)
 
